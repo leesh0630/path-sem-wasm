@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PATH SEM 2.4 / 잠재변인 구조방정식 민감도 분석</title>
+<style>
+:root{--ink:#142d3a;--muted:#607480;--teal:#007e80;--bg:#f1f5f7;--line:#dbe5e9;--warn:#fff5dc;--red:#a53333}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 system-ui,-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif}
+header{background:#122f3c;color:white;padding:30px max(24px,calc((100vw - 1320px)/2));border-bottom:5px solid #26b8ad}
+header small{color:#80dfd3;letter-spacing:2px}h1{margin:5px 0;font-size:29px;letter-spacing:-1px}header p{margin:0;color:#cadce4}
+main{max-width:1368px;margin:auto;padding:24px}section{background:white;border:1px solid var(--line);padding:22px;margin-bottom:18px;border-radius:9px}
+h2{font-size:19px;margin:0 0 15px}h3{font-size:15px;margin:18px 0 9px}.step{color:var(--teal);font:700 13px monospace;margin-right:10px}
+.row{display:flex;align-items:end;flex-wrap:wrap;gap:12px}.row.top{align-items:start}.grow{flex:1;min-width:200px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+label{display:block;color:var(--muted);font-size:13px}input,select,textarea,button{font:inherit}input,select,textarea{border:1px solid #bdcfd7;border-radius:5px;background:white;padding:8px;color:var(--ink);max-width:100%}select{min-width:135px}input[type=number]{width:85px}input[type=checkbox]{width:auto;accent-color:var(--teal)}
+textarea{width:100%;min-height:85px}button{background:var(--teal);color:white;padding:9px 15px;border:1px solid transparent;border-radius:5px;cursor:pointer;font-weight:600}button.secondary{background:#edf4f6;color:var(--ink);border-color:#d7e4e9}button.danger{background:#fff;color:var(--red);border-color:#d9b8b8}button:disabled{opacity:.45;cursor:not-allowed}button:hover:not(:disabled){filter:brightness(.94)}
+.note{color:var(--muted);font-size:13px}.notice{padding:13px 16px;background:#edf8f8;border-left:4px solid var(--teal);margin:10px 0}.warning{background:var(--warn);border-left-color:#c38a00}.error{background:#fff0ef;border-left-color:var(--red);color:var(--red)}
+#status{padding:11px 16px;background:#e4edf1;border-radius:6px;margin-bottom:15px;white-space:pre-wrap}#message:empty{display:none}#message{position:sticky;top:8px;z-index:20;white-space:pre-wrap;max-height:180px;overflow:auto;box-shadow:0 3px 10px #122f3c20}
+.pill{display:inline-flex;gap:7px;align-items:center;background:#e9f1f4;border-radius:4px;padding:3px 9px;margin:4px}.pill button{padding:0 5px;background:none;color:var(--red)}
+.field{margin:8px 0}.field select{width:100%}.latent-card{border:1px solid var(--line);padding:12px;margin:10px 0;background:#f8fbfc}.latent-card input{width:100%}.latent-card select[multiple]{height:190px;min-width:0}.latent-card .selection{font-size:12px;color:var(--teal);overflow-wrap:anywhere;margin-top:5px}.scroll{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:5px}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line)}th{background:#eaf1f4;color:#365663;position:sticky;top:0;z-index:1}th:first-child,td:first-child{text-align:left}tbody tr:hover{background:#f2faf9}.bad{color:var(--red)}.ok{color:var(--teal)}
+pre{white-space:pre-wrap;word-break:break-word;background:#142f3c;color:#dcf1f3;border-radius:6px;padding:16px;font-size:12px;max-height:420px;overflow:auto}details>summary{cursor:pointer;font-weight:600;margin:10px 0}
+.priority{display:grid;grid-template-columns:32px minmax(150px,1fr) 145px 95px 110px;gap:8px;align-items:center;margin:8px 0}.priority select{min-width:0;width:100%}.priority input{width:100%}.priority small{color:var(--muted)}
+progress{width:100%;height:17px;accent-color:var(--teal)}.toolbar{margin:12px 0}.stats{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.stat{background:#eff5f6;padding:9px 15px;border-radius:5px}.stat strong{font-size:21px;color:var(--teal);margin-right:5px}
+footer{text-align:center;color:var(--muted);padding:0 20px 28px;font-size:12px}a{color:var(--teal)}.hidden{display:none!important}
+@media(max-width:800px){main{padding:12px}section{padding:16px}.grid{grid-template-columns:1fr}.priority{grid-template-columns:25px 1fr 120px}.priority input{grid-column:auto}header{padding:22px}h1{font-size:24px}}
+
+.goal{display:grid;grid-template-columns:32px minmax(180px,1fr) 140px 110px 110px;gap:8px;align-items:center;margin:8px 0}
+.goal select,.goal input{width:100%;min-width:0}
+#groupDetail{margin-top:14px}#groupStatus{white-space:pre-wrap;margin:10px 0}
+@media(max-width:800px){.goal{grid-template-columns:25px 1fr 110px}.goal input{width:100%}}
+</style>
+</head>
+<body>
+<header><small>PATH / SENSITIVITY WORKBENCH</small><h1>잠재변인 구조방정식 · 민감도 분석</h1><p>webR + lavaan · 단일 사례 제외 순위 · 목표 기반 다중 제외 조합 · 원자료 비교</p></header>
+<main>
+<div id="message" role="alert" class="notice"></div>
+<div class="notice warning"><strong>탐색적 분석 도구입니다.</strong> 적합도나 유의확률이 좋아지는 사례를 찾는 것만으로 사례 제외가 정당화되지는 않습니다. 원자료 결과와 모든 제외 이력을 함께 보존하고, 독립적인 제외 근거를 기록하세요. 사례 선택 후의 p값·95% CI는 그 선택 절차를 보정하지 않습니다.</div>
+<section>
+<h2><span class="step">00</span>R 엔진 연결</h2>
+<div id="status" role="status" aria-live="polite">페이지 시작 시 R 엔진과 lavaan을 자동으로 초기화합니다. 데이터·모형 입력은 동시에 가능합니다.</div>
+<div class="row"><label class="grow">webR 배포 경로 (끝에 /)<input id="engineUrl" style="width:100%" value="https://webr.r-wasm.org/v0.5.4/"></label><label class="grow">Wasm 패키지 저장소<input id="repoUrl" style="width:100%" value="https://repo.r-wasm.org/"></label><button id="init">연결 재시도 / 상태 확인</button></div>
+<details open><summary>R 초기화 상세 로그 · 실패 원인 확인</summary>
+<pre id="engineLog" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto" aria-live="polite"></pre>
+<button id="exportEngineLog" class="secondary">연결 진단 로그 저장</button></details>
+<p class="note">동봉된 wasm/manifest.json이 있으면 엔진 버전·R 버전·SHA-256을 검증한 뒤 같은 서버의 Wasm 패키지를 설치합니다. 동봉 모드에서는 외부 패키지 저장소 목록을 조회하지 않습니다. manifest가 404일 때만 기존 외부 저장소 방식을 사용합니다. CRAN 소스 tar.gz나 Windows ZIP은 사용할 수 없습니다. 연결 완료 전에 quadprog 실제 계산과 lavaan CFA 수렴을 검사합니다. R 엔진 자체는 외부에서 내려받습니다.</p>
+</section>
+<section id="dataSection">
+<h2><span class="step">01</span>데이터 불러오기</h2>
+<div class="row">
+<label class="grow">CSV / TSV / 구분자 TXT (첫 행 = 변수명)<input id="file" type="file" accept=".csv,.tsv,.txt" style="width:100%"></label>
+<label>문자 인코딩<select id="encoding"><option value="utf-8">UTF-8</option><option value="euc-kr">EUC-KR / CP949</option></select></label>
+<label>구분자<select id="delimiter"><option value="auto">자동</option><option value=",">쉼표</option><option value="tab">탭</option><option value=";">세미콜론</option></select></label>
+<button id="demo" class="secondary">SEM 예제 불러오기 (300명)</button><button id="exportDemo" class="secondary">예제 CSV 저장</button>
+</div>
+<div id="dataInfo" class="stats"></div>
+<div class="row"><label>사례 표시 ID (선택)<select id="idColumn"><option value="">원본 행 번호</option></select></label><span class="note">제외 단위는 언제나 원본 데이터 레코드 번호(1부터)입니다. ID 값이 중복되어도 혼동하지 않습니다.</span></div>
+<details><summary>데이터 미리보기 · 앞 12행</summary><div id="preview" class="scroll"></div></details>
+</section>
+<section id="modelSection">
+<h2><span class="step">02</span>잠재변인 이름 · 관측지표 배정 · 구조경로</h2>
+<div class="row">
+<label>독립 잠재변인 수<input id="nx" type="number" min="1" max="12" value="1"></label>
+<label>매개 잠재변인 수<input id="nm" type="number" min="0" max="12" value="1"></label>
+<label>종속 잠재변인 수<input id="ny" type="number" min="1" max="12" value="1"></label>
+<button id="forms" class="secondary">입력폼 갱신</button>
+<label>결측값 처리<select id="missing"><option value="listwise">완전사례 고정 (listwise)</option><option value="fiml">FIML (ML, fixed.x=FALSE)</option></select></label>
+</div>
+<p class="note">X·M·Y 칸에 <strong>잠재변인 이름을 직접 입력</strong>하고, 아래 목록에서 해당 잠재변인을 측정하는 <strong>데이터 열을 다중 선택</strong>하세요. Windows/Linux는 Ctrl, Mac은 ⌘를 누르고 선택하며 Shift로 연속 선택할 수 있습니다. 이 앱은 잠재변인마다 서로 다른 연속형 관측지표 3개 이상을 요구합니다. 같은 지표의 중복 배정·교차적재는 지원하지 않습니다. 첫 번째 지표의 요인적재량은 1로 고정합니다.</p>
+<div id="roleForms" class="grid"></div>
+<div class="notice">측정모형(<code>=~</code>)과 잠재변인 간 구조모형(<code>~</code>)을 함께 적합합니다. X → 모든 M·Y, 앞선 M → 뒤 M·모든 Y를 기본 생성합니다. M 입력 순서는 이론적 인과 순서입니다. <strong>구조경로가 완전 연결이어도 측정모형의 제약 때문에 전체 SEM은 일반적으로 포화모형이 아닙니다.</strong> 실제 df와 식별·추정 경고를 확인하세요.</div>
+<h3>제외할 연결 선택</h3>
+<div class="row">
+<label>연결 종류<select id="edgeType"><option value="reg">회귀 경로 →</option><option value="cov">공분산 ↔</option></select></label>
+<label>독립 / 출발 변수<select id="edgeFrom"></select></label>
+<label>종속 / 도착 변수<select id="edgeTo"></select></label>
+<button id="removeEdge" class="danger">이 경로 제외</button><button id="restoreEdges" class="secondary">제외 모두 복원</button>
+</div>
+<div id="removed"></div><div id="modelInfo" class="note"></div>
+<details><summary>자동 생성 lavaan 모형 · 내부 변수명 매핑</summary><div id="mapping"></div><pre id="syntax">변수를 선택하세요.</pre><button id="exportR" class="secondary">재현용 R 코드 저장</button><button id="exportData" class="secondary">매핑된 분석 데이터 CSV 저장</button></details>
+<div class="row toolbar"><button id="baseline">원자료 기본분석 실행</button><span class="note">변수·경로·결측 설정을 바꾸면 이전 결과는 무효화됩니다.</span></div>
+</section>
+<section>
+<h2><span class="step">03</span>원자료 결과와 제외 시나리오</h2>
+<div id="baselineInfo" class="note">기본분석을 실행하면 결과가 표시됩니다.</div>
+<div id="fitResults" class="scroll hidden"></div>
+<h3>요인적재량 / 구조경로 / 매개효과 / 총효과</h3>
+<p class="note">B = 비표준화 계수, β = 완전표준화(std.all). p와 일반 95% CI는 비표준화 계수 기준이며, 개별·총 간접효과는 델타법의 정규근사 CI입니다. 부트스트랩은 수행하지 않습니다. Δ = 시나리오 − 원자료.</p>
+<div id="parameterResults" class="scroll hidden"></div>
+<div id="warnings"></div>
+</section>
+<section id="prioritySection">
+<h2><span class="step">04</span>보고 싶은 값 · 최대 10개 우선순위</h2>
+<p class="note">빈칸은 건너뜁니다. 1번이 최우선이고 그 값이 같을 때만 다음 기준을 봅니다(가중합 아님). “좋은 방향”은 직접 지정하세요. 허용폭이 0이면 원값을 비교하고, 양수면 값/허용폭을 반올림한 구간을 비교합니다. 구간 경계에서 순위가 달라질 수 있습니다.</p>
+<div class="priority note"><span>순서</span><span>지표 / 계수 / CI</span><span>좋은 방향</span><span>목표값</span><span>동점 구간폭</span></div>
+<div id="priorities"></div>
+<button id="rerank" class="secondary">현재 기준으로 다시 정렬</button>
+<label class="field"><input id="ack" type="checkbox"> 이 순위는 탐색적 민감도 분석이며, 순위 자체가 사례 제외의 근거가 아님을 확인합니다.</label>
+<div class="row toolbar">
+<label>단일 제외 반복의 출발 집합<select id="looSource"><option value="full">원자료 분석 가능 전체</option><option value="scenario">현재 시나리오 포함 사례</option></select></label>
+<button id="runLOO">모든 사례를 하나씩 제외하여 계산</button><button id="stopLOO" class="danger" disabled>현재 사례 완료 후 중지</button>
+</div>
+<p class="note">원자료에서 1번만 제외 → 다시 원자료에서 2번만 제외하는 독립 반복입니다. 이 구역은 단일 제외만 계산합니다. 다중 제외 조합 탐색은 06에서 별도로 실행합니다. 시나리오 출발을 고르면 이미 제외한 사례는 고정하고 나머지를 하나씩 추가 제외합니다. 잘못된 해·비수렴은 순위 하단에 표시합니다.</p>
+<progress id="progress" value="0" max="1"></progress><div id="progressText" class="note" aria-live="polite">대기 중</div>
+<div class="row toolbar"><label class="grow">행 번호 또는 ID 검색<input id="rankFilter" style="width:100%" placeholder="검색"></label><label>한 페이지<select id="pageSize"><option>25</option><option selected>50</option><option>100</option></select></label><button id="prev" class="secondary">이전</button><span id="pageText"></span><button id="next" class="secondary">다음</button><button id="exportRank" class="secondary">전체 순위 CSV</button></div>
+<div id="looTable" class="scroll"></div>
+</section>
+<section id="scenarioSection">
+<h2><span class="step">05</span>특정 사례 제외 · 원자료와 비교</h2>
+<p class="note">순위 표의 체크박스로 후보를 담거나 아래에 원본 행 번호를 입력하세요. 체크만으로 데이터가 삭제되거나 모형이 바뀌지 않습니다.</p>
+<label>제외할 원본 데이터 행 번호 (예: 2, 8, 15-18)<textarea id="excludeRows" placeholder="예: 2, 8, 15-18"></textarea></label>
+<label>제외 근거 / 시나리오 이름<textarea id="reason" placeholder="예: 사전에 정한 응답시간 기준 미달. 단순히 p값이 작아져서 제외하는 방식은 피하세요."></textarea></label>
+<div class="row toolbar"><button id="compare">선택 사례 제외 후 비교</button><button id="clearSelection" class="secondary">제외 선택 비우기</button><button id="exportReport" class="secondary">분석 결과·이력 JSON</button><button id="exportComparison" class="secondary">현재 비교 CSV</button></div>
+<div id="scenarioInfo" class="note">제외 시나리오 없음</div>
+<details><summary>이력 보기 (현재 페이지 메모리에만 보관)</summary><div id="history" class="scroll"></div></details>
+</section>
+
+<section id="groupSection">
+<h2><span class="step">06</span>목표 기반 다중 제외 조합 탐색</h2>
+<div class="notice warning"><strong>자동 삭제 권고가 아니라 민감도 분석 후보입니다.</strong> 목표 달성을 이유로 표본을 삭제하면 선택 편향이 생길 수 있습니다. 탐색 결과는 원자료와 함께 보고하세요. 목표 미달은 “탐색한 범위에서 미발견”이며 불가능하다는 뜻이 아닙니다.</div>
+<p class="note">아래 목표는 04의 좋은 방향과 별도입니다. 목표 1 → 2 → …의 <strong>미달량</strong>을 우선 최소화하고, 모두 동점이면 실행 당시 04 우선순위를 적용합니다. 목표를 초과 달성한 정도는 미달량 0으로 같습니다. 전체 목표를 충족한 조합은 미충족 조합보다 앞섭니다.</p>
+<div class="row">
+<label>총 제외 수 (고정 제외 포함)<input id="groupK" type="number" min="1" max="100" value="2"></label>
+<label>탐색 방식<select id="groupMode"><option value="auto">자동 (작으면 전수)</option><option value="exact">전수 탐색만</option><option value="beam">빔 탐색 (근사)</option></select></label>
+<label>최대 추정 횟수<input id="groupBudget" type="number" min="1" max="5000" value="500"></label>
+<label>빔 폭<input id="groupBeam" type="number" min="1" max="100" value="10"></label>
+<label>난수 시드<input id="groupSeed" type="number" min="1" max="4294967295" value="42821"></label>
+<label>상위 보관 수<input id="groupTop" type="number" min="1" max="100" value="20"></label>
+<label>최소 잔여 N<input id="groupMinN" type="number" min="1" value="30"></label>
+</div>
+<div class="grid">
+<label>항상 제외할 행 번호 (선택)<textarea id="groupFixed" placeholder="예: 1, 5-7"></textarea></label>
+<label>절대 제외하지 않을 행 번호 (선택)<textarea id="groupProtected" placeholder="예: 2, 8"></textarea></label>
+<label>추가 제외 후보 한정 (빈칸 = 나머지 전체)<textarea id="groupPool" placeholder="사전 기준으로 정한 후보만 탐색하려면 입력"></textarea></label>
+</div>
+<p class="note">총 제외 수는 정확히 k명입니다. 결측으로 이미 제외된 사례는 지정할 수 없습니다. 현재 05 시나리오는 자동으로 고정하지 않습니다. 필요하면 고정 제외란에 직접 입력하세요. 원본 행 번호는 헤더·빈 레코드를 제외한 데이터 순서입니다.</p>
+<div class="row toolbar"><button id="importGoals" class="secondary">04에서 선택한 지표 가져오기</button><button id="groupEstimate" class="secondary">조합 수 / 설정 확인</button></div>
+<div class="goal note"><span>순서</span><span>목표 지표 (최대 10개)</span><span>조건</span><span>목표값</span><span>± 허용오차</span></div>
+<div id="goals"></div>
+<p class="note">조건: ≥ 이상 / ≤ 이하 / 목표 ± 오차. ≥·≤에는 허용오차를 적용하지 않습니다. CI가 양수인 조건은 ‘하한 ≥ 원하는 양수’, 음수인 조건은 ‘상한 ≤ 원하는 음수’로 설정하세요. p ≤ 0.05와 p &lt; 0.05는 다릅니다.</p>
+<label>탐색 목적·사전 제외 근거 (필수)<textarea id="groupReason" placeholder="민감도 점검 목적, 사전 제외 기준, 후보 범위를 기록하세요. 목표 달성 자체는 제외 근거가 아닙니다."></textarea></label>
+<label class="field"><input id="groupAck" type="checkbox"> 목표를 본 뒤 선택한 사례의 p값·CI는 선택을 보정하지 않으며, 결과를 탐색적으로 보고함을 확인합니다.</label>
+<div class="row toolbar"><button id="runGroup">제외 조합 탐색</button><button id="stopGroup" class="danger" disabled>현재 추정 후 중지</button><button id="exportGroup" class="secondary">탐색 전체 기록 JSON</button><button id="exportGroupCSV" class="secondary">상위 조합·전체 수치 CSV</button></div>
+<progress id="groupProgress" value="0" max="1"></progress>
+<div id="groupStatus" role="status" aria-live="polite" class="note">기본분석 후 목표를 선택하세요.</div>
+<div id="groupTable" class="scroll"></div>
+<div id="groupDetail"></div>
+<details><summary>조합 탐색 이력 · 이전 실행 설정과 평가 기록</summary><div id="groupHistory" class="scroll"></div></details>
+<p class="note">전수 탐색만 해당 후보 범위의 모든 조합을 평가합니다. 빔 탐색은 일부 유망한 부분집합만 확장하므로 전역 최적해·목표 발견을 보장하지 않습니다. 중간 단계가 부적절한 해이면 그 가지는 확장하지 않아, 정상적인 최종 조합을 놓칠 수도 있습니다. 각 후보는 단일 제외 효과를 합산하지 않고 lavaan으로 다시 추정합니다.</p>
+</section>
+
+<details><summary>사용 범위 · 실행 환경 · 해석 주의사항</summary>
+<div class="notice">
+① CSV/TSV, 연속형 수치 관측변수, 단일집단 ML만 지원합니다. Excel/SPSS 파일은 CSV로 변환하세요. 잠재변인별 단순 측정모형과 재귀 구조모형을 지원합니다. 교차적재·지표 잔차상관·단일/2지표 잠재변인·다층·범주형 전용 추정·가중치·군집 표준오차·MLR/WLSMV는 지원하지 않습니다.<br>
+② UTF-8 또는 EUC-KR를 선택하고 다시 파일을 여세요. 빈칸, NA, N/A, NaN, NULL은 결측입니다. 999 같은 사용자 결측 코드는 업로드 전 변환하세요. 숫자 안의 천 단위 쉼표·소수점 쉼표는 지원하지 않습니다.<br>
+③ 원자료는 앱 코드에서 외부로 전송하지 않고 브라우저 메모리와 webR 가상 파일시스템에서 처리합니다. 다만 엔진/패키지를 내려받는 외부 요청은 발생합니다. 내보낸 파일에는 사례 ID·제외 이력 등이 포함될 수 있습니다.<br>
+④ 더블클릭(file://)은 브라우저 정책에 따라 실패할 수 있습니다. 권장: HTML 폴더에서 <code>python -m http.server 8000 --bind 127.0.0.1</code> 실행 후 로컬 주소에서 여세요. 별도 R 서버는 필요 없습니다. 인터넷과 Wasm/Worker 지원 브라우저가 필요합니다.<br>
+⑤ GFI/AGFI는 전통 LISREL 정의를 사용합니다(신규 lavaan에서는 gfi_lisrel/agfi_lisrel 자동 매핑). 일반 CI는 간접효과의 비정규성을 완전히 반영하지 않습니다. 표본선택 후 p값/CI를 확증적 결과로 해석하지 마세요. 표본 감소 자체가 χ²·p에 영향을 주며, 서로 다른 사례집합의 AIC/BIC를 같은 데이터의 모형 비교처럼 해석하지 마세요. 카이제곱의 p값 상승은 좋은 모형의 충분조건이 아니고, GFI/AGFI나 고정된 지수 절단값만으로 결론내리지 마세요.<br>
+⑥ 현재 사례 추정은 즉시 중단하지 않고 끝난 후 멈춥니다. 대규모 사례/모형은 오래 걸리고, 간접경로가 2,000개를 넘으면 생성을 차단합니다. 새로고침하면 데이터·결과가 사라지므로 먼저 내보내세요. 다중 제외는 실행당 최대 5,000회 추정하며 반복 탐색 이력은 메모리를 사용합니다. 장시간 사용 후 JSON을 저장하세요.
+</div></details>
+</main><footer>PATH SEM 2.4 · R 계산은 연결 후 실제 lavaan 엔진에서 수행 · 일반 CI / 비부트스트랩 · 2026-10-27</footer>
+<script type="module">
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=x=>typeof x==="number"&&Number.isFinite(x)?(x!==0&&Math.abs(x)<.0001?x.toExponential(3):x.toFixed(5)):"—";
+const finite=x=>typeof x==="number"&&Number.isFinite(x);
+const rq=s=>JSON.stringify(String(s)).replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029");
+const rv=xs=>xs.length?"c("+xs.map(x=>typeof x==="number"?x:rq(x)).join(",")+")":"integer(0)";
+const state={headers:[],rows:[],filename:"",roles:{x:[],m:[],y:[]},removed:new Set(),model:null,baseline:null,scenario:null,prepared:null,loo:[],looMeta:null,history:[],metrics:[],page:0,engine:null,busy:false,stop:false,engineMeta:null,sourceHash:null,group:null,groupArchive:[],runningGroup:false};
+function message(s="",bad=false){$("message").textContent=s;$("message").className="notice"+(bad?" error":"");}
+function log(s){$("status").textContent=s;}
+function stamp(){return new Date().toISOString();}
+function download(name,text,type="text/plain;charset=utf-8"){const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);}
+function csvCell(x){let s=x==null?"":String(x);if(/^[=+@\t\r]/.test(s)||/^-\D/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}
+function csv(headers,rows,bom=true){return(bom?"\ufeff":"")+[headers,...rows].map(r=>r.map(csvCell).join(",")).join("\r\n");}
+function table(headers,rows){return"<table><thead><tr>"+headers.map(h=>"<th>"+esc(h)+"</th>").join("")+"</tr></thead><tbody>"+rows.map(r=>"<tr>"+r.map(c=>"<td>"+esc(c)+"</td>").join("")+"</tr>").join("")+"</tbody></table>";}
+function lock(on){state.busy=on;document.querySelectorAll("input,select,textarea,button").forEach(el=>{if(!["stopLOO","stopGroup"].includes(el.id))el.disabled=on;});$("stopLOO").disabled=!on||!state.runningLOO;$("stopGroup").disabled=!on||!state.runningGroup;}
+async function task(fn){if(state.busy)return;message();lock(true);try{await fn();}catch(e){message(e.message||String(e),true);console.error(e);}finally{state.runningLOO=false;state.runningGroup=false;lock(false);}}
+function bind(id,fn){$(id).addEventListener("click",()=>{if(state.busy)return;try{const p=fn();if(p?.catch)p.catch(e=>message(e.message,true));}catch(e){message(e.message,true);}});}
+function invalidate(){state.baseline=null;state.scenario=null;state.prepared=null;state.loo=[];state.looMeta=null;state.metrics=[];state.page=0;$("baselineInfo").textContent="설정 변경됨 · 기본분석을 다시 실행하세요.";$("fitResults").classList.add("hidden");$("parameterResults").classList.add("hidden");$("warnings").innerHTML="";$("scenarioInfo").textContent="제외 시나리오 없음";$("looTable").innerHTML="";$("progressText").textContent="대기 중";$("progress").value=0;renderPriorities();renderRank();resetGroup();}
+function splitCSV(text,sep){
+ text=text.replace(/^\ufeff/,"");const out=[];let row=[],cell="",quoted=false,afterQuote=false;
+ const pushRow=()=>{row.push(cell);if(row.some(v=>v.trim()!==""))out.push(row);row=[];cell="";afterQuote=false;};
+ for(let i=0;i<text.length;i++){const c=text[i];
+  if(quoted){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else{quoted=false;afterQuote=true;}}else cell+=c;}
+  else if(c==='"'&&cell===""){quoted=true;}
+  else if(c===sep){row.push(cell);cell="";afterQuote=false;}
+  else if(c==="\n"||c==="\r"){if(c==="\r"&&text[i+1]==="\n")i++;pushRow();}
+  else{if(afterQuote&&!/\s/.test(c))throw Error("닫는 따옴표 뒤에 잘못된 문자가 있습니다.");if(!afterQuote)cell+=c;}
+ }
+ if(quoted)throw Error("닫히지 않은 CSV 따옴표가 있습니다.");
+ if(cell!==""||row.length)pushRow();return out;
+}
+function detectSep(text){let first="",q=false;for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(q&&text[i+1]==='"'){first+='""';i++;continue;}q=!q;}if(!q&&/[\r\n]/.test(c))break;first+=c;}return[",","\t",";"].map(s=>[s,splitCSV(first,s)[0]?.length||0]).sort((a,b)=>b[1]-a[1])[0][0];}
+function loadData(text,name,sep="auto"){
+ const rows=splitCSV(text,sep==="auto"?detectSep(text):sep==="tab"?"\t":sep);if(rows.length<2)throw Error("변수명 행과 데이터가 최소 한 행 필요합니다.");
+ const headers=rows.shift().map(x=>x.trim());if(headers.some(x=>!x)||new Set(headers).size!==headers.length)throw Error("변수명은 비어 있거나 중복될 수 없습니다.");
+ rows.forEach((r,i)=>{if(r.length!==headers.length)throw Error(`데이터 ${i+1}번 행의 열 수(${r.length})가 변수명 수(${headers.length})와 다릅니다.`);});
+ if(state.group)state.groupArchive.push(state.group);state.group=null;
+ state.headers=headers;state.rows=rows;state.filename=name;state.roles={x:[],m:[],y:[]};state.removed.clear();state.history=[];state.model=null;state.sourceHash=null;
+ $("excludeRows").value="";$("reason").value="";$("file").value="";$("dataInfo").innerHTML=`<div class="stat"><strong>${rows.length}</strong>사례</div><div class="stat"><strong>${headers.length}</strong>변수</div><div class="stat">${esc(name)}</div>`;
+ $("idColumn").innerHTML='<option value="">원본 행 번호</option>'+headers.map((h,i)=>`<option value="${i}">${esc(h)}</option>`).join("");
+ $("preview").innerHTML=table(["원본 행",...headers],rows.slice(0,12).map((r,i)=>[i+1,...r]));invalidate();renderForms();buildModel();renderHistory();message("데이터 로드 완료. 잠재변인 이름과 관측지표를 지정한 뒤 기본분석을 실행하세요.");
+}
+function readRoles(){
+ for(const r of ["x","m","y"])state.roles[r]=[...document.querySelectorAll(`[data-role="${r}"]`)].map(card=>({
+  name:card.querySelector(".latent-name").value.trim(),
+  indicators:[...card.querySelector(".indicator-select").selectedOptions].map(o=>Number(o.value))
+ }));
+}
+function renderForms(){
+ const labels={x:"독립 잠재변인 X",m:"매개 잠재변인 M · 순서대로",y:"종속 잠재변인 Y"};
+ $("roleForms").innerHTML=["x","m","y"].map(r=>{
+  const n=Number($("n"+r).value);
+  if(!Number.isInteger(n)||n<(r==="m"?0:1)||n>12)throw Error("잠재변인 수는 X·Y 1–12개, M 0–12개입니다.");
+  const old=state.roles[r];
+  return `<div><h3>${labels[r]}</h3>`+Array.from({length:n},(_,i)=>{
+   const v=old[i]||{name:"",indicators:[]};
+   return `<div class="latent-card" data-role="${r}" data-index="${i}">
+    <label class="field">${r.toUpperCase()}${i+1} 잠재변인 이름<input type="text" class="latent-name" value="${esc(v.name)}" placeholder="예: 학습동기" aria-label="${r.toUpperCase()}${i+1} 잠재변인 이름"></label>
+    <label class="field">관측지표 다중 선택 (3개 이상)<select multiple class="indicator-select" aria-label="${r.toUpperCase()}${i+1} 관측지표">${state.headers.map((name,col)=>`<option value="${col}" ${v.indicators.includes(col)?"selected":""}>${esc(name)}</option>`).join("")}</select></label>
+    <div class="selection"></div></div>`;
+  }).join("")+"</div>";
+ }).join("");
+ const changed=()=>{readRoles();syncRoleOptions();state.removed.clear();invalidate();try{buildModel();message();}catch(e){message(e.message,true);}};
+ document.querySelectorAll(".latent-name").forEach(el=>el.addEventListener("input",changed));
+ document.querySelectorAll(".indicator-select").forEach(el=>el.addEventListener("change",changed));
+ readRoles();syncRoleOptions();
+}
+function syncRoleOptions(){
+ const selects=[...document.querySelectorAll(".indicator-select")];
+ const chosen=selects.flatMap(s=>[...s.selectedOptions].map(o=>o.value));
+ for(const s of selects){
+  for(const o of s.options)o.disabled=!o.selected&&chosen.includes(o.value);
+  s.closest(".latent-card").querySelector(".selection").textContent=
+   `선택 ${s.selectedOptions.length}개: `+[...s.selectedOptions].map(o=>o.textContent).join(", ");
+ }
+}
+function roleComplete(){
+ return !!state.roles.x.length&&!!state.roles.y.length&&
+ ["x","m","y"].flatMap(r=>state.roles[r]).every(v=>v.name&&v.indicators.length>=3);
+}
+function buildModel(){
+ state.model=null;$("syntax").textContent="잠재변인 이름과 관측지표 3개 이상을 각 입력폼에 지정하세요.";$("mapping").innerHTML="";$("modelInfo").textContent="";$("removed").innerHTML="";
+ if(!roleComplete()){edgeOptions([]);return;}
+ const vars=["x","m","y"].flatMap(role=>state.roles[role].map(v=>({...v,role})));
+ if(new Set(vars.map(v=>v.name)).size!==vars.length)throw Error("잠재변인 이름은 서로 달라야 합니다.");
+ const cols=vars.flatMap(v=>v.indicators);
+ if(new Set(cols).size!==cols.length)throw Error("관측지표를 여러 잠재변인에 중복 배정할 수 없습니다.");
+ if(cols.some(c=>!Number.isInteger(c)||c<0||c>=state.headers.length))throw Error("관측지표 배정을 다시 확인하세요.");
+ const nodes=vars.map((v,i)=>({col:i,alias:"L"+(i+1),name:v.name,role:v.role,indicatorCols:[...v.indicators]}));
+ const indicators=cols.map((col,i)=>({col,alias:"v"+(i+1),name:state.headers[col]}));
+ const byIndicator=new Map(indicators.map(v=>[v.col,v]));
+ const x=nodes.filter(v=>v.role==="x").map(v=>v.col),m=nodes.filter(v=>v.role==="m").map(v=>v.col),y=nodes.filter(v=>v.role==="y").map(v=>v.col);
+ const selected=nodes.map(v=>v.col),byCol=new Map(nodes.map(n=>[n.col,n]));
+ const loadingNames={};
+
+ const all=[];function reg(a,b){all.push({key:`r${a}_${b}`,type:"reg",from:a,to:b,label:"b"+(all.filter(e=>e.type==="reg").length+1)});}
+ for(const a of x)for(const b of [...m,...y])reg(a,b);
+ for(let i=0;i<m.length;i++){for(let j=i+1;j<m.length;j++)reg(m[i],m[j]);for(const b of y)reg(m[i],b);}
+ for(const group of [x,y])for(let i=0;i<group.length;i++)for(let j=i+1;j<group.length;j++)all.push({key:`c${group[i]}_${group[j]}`,type:"cov",from:group[i],to:group[j]});
+ const active=all.filter(e=>!state.removed.has(e.key));const edges=active.filter(e=>e.type==="reg");const lines=["# 잠재변인 L*, 관측지표 v*: 아래 매핑 표 참조. 연속형 ML / 델타법 CI.","# 각 잠재변인의 첫 지표 적재량을 1로 고정 (marker)."];
+ for(const n of nodes){
+  lines.push(n.alias+" =~ "+n.indicatorCols.map((c,i)=>{
+   const v=byIndicator.get(c);
+   loadingNames["load_"+n.alias+"_"+v.alias]=`요인적재: ${n.name} → ${v.name}${i===0?" [1 고정]":""}`;
+   return (i===0?"1":("l"+(n.col+1)+"_"+(i+1)))+"*"+v.alias;
+  }).join(" + "));
+ }
+
+ // Explicit zeros prevent lavaan's automatic covariance rules from restoring excluded links.
+ for(const b of [...m,...y]){const incoming=edges.filter(e=>e.to===b);lines.push(byCol.get(b).alias+" ~ "+(incoming.length?incoming.map(e=>e.label+"*"+byCol.get(e.from).alias).join(" + "):"0*"+byCol.get(x[0]).alias));}
+ for(const n of nodes){lines.push(`${n.alias} ~~ ${n.alias}`);lines.push(`${n.alias} ~ 0*1`);}
+ for(const v of indicators){lines.push(`${v.alias} ~~ ${v.alias}`);lines.push(`${v.alias} ~ 1`);}
+ for(let i=0;i<x.length;i++)for(let j=i+1;j<x.length;j++){const e=all.find(e=>e.type==="cov"&&e.from===x[i]&&e.to===x[j]);lines.push(`${byCol.get(x[i]).alias} ~~ ${state.removed.has(e.key)?"0*":""}${byCol.get(x[j]).alias}`);}
+ for(let i=0;i<y.length;i++)for(let j=i+1;j<y.length;j++){const e=all.find(e=>e.type==="cov"&&e.from===y[i]&&e.to===y[j]);lines.push(`${byCol.get(y[i]).alias} ~~ ${state.removed.has(e.key)?"0*":""}${byCol.get(y[j]).alias}`);}
+ const defs=[],labelNames={...loadingNames};for(const e of edges)labelNames[e.label]=`${byCol.get(e.from).name} → ${byCol.get(e.to).name}`;
+ let counter=0;
+ for(const a of x)for(const b of y){
+  const paths=[];function visit(current,path,labels){for(const e of edges.filter(e=>e.from===current)){if(e.to===b){if(path.length>1)paths.push({nodes:[...path,b],labels:[...labels,e.label]});}else if(m.includes(e.to))visit(e.to,[...path,e.to],[...labels,e.label]);if(paths.length>2000)throw Error("간접경로가 너무 많습니다(2,000개 초과). 매개변수나 연결을 줄이세요.");}}
+  visit(a,[a],[]);const names=[];
+  for(const p of paths){const key="ind"+(++counter);if(counter>2000)throw Error("간접경로가 2,000개를 초과합니다.");names.push(key);defs.push({key,name:"개별 간접: "+p.nodes.map(c=>byCol.get(c).name).join(" → "),expr:p.labels.join("*"),type:"indirect"});}
+  const direct=edges.find(e=>e.from===a&&e.to===b);
+  if(names.length){const key=`indsum${nodes.findIndex(n=>n.col===a)+1}_${nodes.findIndex(n=>n.col===b)+1}`;defs.push({key,name:`총 간접: ${byCol.get(a).name} → ${byCol.get(b).name}`,expr:names.join(" + "),type:"sumIndirect"});}
+  if(names.length||direct){const key=`total${nodes.findIndex(n=>n.col===a)+1}_${nodes.findIndex(n=>n.col===b)+1}`;defs.push({key,name:`총효과: ${byCol.get(a).name} → ${byCol.get(b).name}`,expr:[...(direct?[direct.label]:[]),...names].join(" + "),type:"total"});}
+ }
+ for(const d of defs){lines.push(`${d.key} := ${d.expr}`);labelNames[d.key]=d.name;}
+ state.model={nodes,indicators,all,active,edges,defs,labelNames,syntax:lines.join("\n"),type:"latent-sem",identification:"first-loading-fixed-1"};
+ $("syntax").textContent=state.model.syntax;$("mapping").innerHTML=table(["종류","내부명","이름","측정 대상 / 관측지표"],[
+ ...nodes.map(n=>["잠재변인",n.alias,n.name,n.indicatorCols.map(c=>state.headers[c]).join(", ")]),
+ ...indicators.map(v=>["관측지표",v.alias,v.name,nodes.find(n=>n.indicatorCols.includes(v.col)).name])
+ ]);
+ $("modelInfo").textContent=`잠재변인 ${nodes.length}개 · 관측지표 ${indicators.length}개 · 구조회귀 ${edges.length}개 · 공분산 ${active.filter(e=>e.type==="cov").length}개 · 개별 간접 ${counter}개 · 총효과/총 간접 ${defs.length-counter}개`;
+ $("removed").innerHTML=all.filter(e=>state.removed.has(e.key)).map(e=>`<span class="pill">${esc(byCol.get(e.from).name)} ${e.type==="reg"?"→":"↔"} ${esc(byCol.get(e.to).name)} <button data-restore="${e.key}" aria-label="경로 복원">복원</button></span>`).join("");
+ document.querySelectorAll("[data-restore]").forEach(b=>b.onclick=()=>{state.removed.delete(b.dataset.restore);invalidate();buildModel();});
+ edgeOptions(all);
+}
+function edgeOptions(all=state.model?.all||[]){
+ const old=$("edgeFrom").value;const type=$("edgeType").value;const available=all.filter(e=>e.type===type&&!state.removed.has(e.key));const from=[...new Set(available.map(e=>e.from))];
+ $("edgeFrom").innerHTML=from.map(i=>`<option value="${i}">${esc(state.model?.nodes.find(n=>n.col===i)?.name||"")}</option>`).join("");if(from.includes(Number(old)))$("edgeFrom").value=old;
+ edgeToOptions();
+}
+function edgeToOptions(){const from=Number($("edgeFrom").value);const available=(state.model?.all||[]).filter(e=>e.type===$("edgeType").value&&e.from===from&&!state.removed.has(e.key));
+ $("edgeTo").innerHTML=available.map(e=>`<option value="${e.key}">${esc(state.model?.nodes.find(n=>n.col===e.to)?.name||"")}</option>`).join("");}
+function requireModel(){for(const r of ["x","m","y"]){const n=Number($("n"+r).value);if(!Number.isInteger(n)||n<(r==="m"?0:1)||n>12||document.querySelectorAll(`[data-role="${r}"]`).length!==n)throw Error("변수 수를 확인하고 입력폼을 갱신하세요.");}if(!state.rows.length)throw Error("데이터를 먼저 불러오세요.");if(!state.model)throw Error("X·M·Y 입력폼을 모두 채우고 올바른 모형을 만드세요.");}
+function requireBase(){requireModel();if(!state.baseline)throw Error("원자료 기본분석을 먼저 실행하세요.");}
+function requireEngine(){if(!state.engine)throw Error("R 엔진을 먼저 연결하세요.");}
+function numberCell(s,row,col){s=String(s).trim();if(/^(|NA|N\/A|NAN|NULL)$/i.test(s))return null;if(!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)||!Number.isFinite(Number(s)))throw Error(`원본 ${row}번 행 / ${state.headers[col]}: 수치가 아닌 값 "${s.slice(0,60)}". 분석 변수는 수치형이어야 합니다.`);return Number(s);}
+function prepare(){
+ requireModel();const nodes=state.model.indicators;const missing=$("missing").value;const usable=[],omitted=[],values=[];
+ state.rows.forEach((r,i)=>{const v=nodes.map(n=>numberCell(r[n.col],i+1,n.col));const use=missing==="listwise"?v.every(x=>x!==null):v.some(x=>x!==null);if(use){usable.push(i+1);values.push(v);}else omitted.push(i+1);});
+ if(usable.length<=nodes.length+1)throw Error("분석 가능 사례가 변수 수 + 1 이하입니다. 표본 크기와 결측을 확인하세요.");
+ for(let j=0;j<nodes.length;j++){const v=values.map(r=>r[j]).filter(x=>x!==null);if(v.length<2||v.every(x=>x===v[0]))throw Error(`${nodes[j].name}: 유효 값이 부족하거나 분산이 0입니다.`);}
+ const data=csv([".row",...nodes.map(n=>n.alias)],values.map((v,i)=>[usable[i],...v]),false);
+ return{usable,omitted,values,data,missing};
+}
+const R_BACKEND=String.raw`
+suppressPackageStartupMessages(library(lavaan))
+suppressPackageStartupMessages(library(jsonlite))
+.path_model <- ""
+.path_dat <- NULL
+.path_missing <- "listwise"
+path_json <- function(x) jsonlite::toJSON(x, auto_unbox=TRUE, dataframe="rows", na="null", null="null", digits=16)
+# Extract using labels, not free-index columns; stable across lavaan versions.
+path_fit <- function(drop=integer(0)) {
+  warns <- character()
+  ans <- tryCatch(withCallingHandlers({
+    d <- .path_dat[!(.path_dat$.row %in% drop),,drop=FALSE]
+    vars <- setdiff(names(d), ".row")
+    if(nrow(d) <= length(vars)+1L) stop("분석 표본이 변수 수 + 1 이하입니다.")
+    for(v in vars) if(sum(!is.na(d[[v]]))<2L || isTRUE(var(d[[v]],na.rm=TRUE)==0)) stop(paste("유효 분산 없음:",v))
+    args <- list(model=.path_model, data=d[,vars,drop=FALSE], estimator="ML",
+      se="standard", test="standard", missing=.path_missing,
+      fixed.x=FALSE, meanstructure=TRUE, auto.cov.y=FALSE,
+      control=list(iter.max=1500L))
+    supported <- gsub("_",".",names(lavaan::lavOptions()),fixed=TRUE)
+    if("se.def" %in% supported) args$se.def <- "delta"
+    if("se.delta.second.order" %in% supported) args$se.delta.second.order <- FALSE
+    fit <- do.call(lavaan::sem,args)
+    if(!isTRUE(lavaan::lavInspect(fit,"converged"))) stop("lavaan 비수렴")
+    admissible <- isTRUE(lavaan::lavInspect(fit,"post.check"))
+    vc_ok <- tryCatch({
+      vc <- lavaan::lavInspect(fit,"vcov")
+      ev <- eigen(vc,symmetric=TRUE,only.values=TRUE)$values
+      length(ev)>0L && all(is.finite(ev)) && min(ev)>1e-12*max(abs(ev))
+    },error=function(e) FALSE)
+    if(!vc_ok) warns <- c(warns,"모수 공분산 행렬이 특이/비양정치이거나 수치적으로 불안정합니다. 후보 순위에서 제외합니다.")
+    pe <- lavaan::parameterEstimates(fit, standardized=TRUE, ci=TRUE, level=.95)
+    pe <- pe[(pe$op=="~" & nzchar(pe$label)) | pe$op=="=~" | pe$op==":=", ,drop=FALSE]
+    pe$ci.lower <- pe$est - stats::qnorm(.975)*pe$se
+    pe$ci.upper <- pe$est + stats::qnorm(.975)*pe$se
+    params <- data.frame(key=ifelse(pe$op=="=~",paste0("load_",pe$lhs,"_",pe$rhs),ifelse(pe$op==":=",pe$lhs,pe$label)),
+       kind=ifelse(pe$op=="=~","measurement",ifelse(pe$op==":=","defined","path")), B=pe$est, beta=pe$std.all,
+       se=pe$se,z=pe$z,p=pe$pvalue,lower=pe$ci.lower,upper=pe$ci.upper,stringsAsFactors=FALSE)
+    keys <- c("chisq","df","pvalue","cfi","gfi","agfi","tli","srmr","rmsea","rmsea.ci.lower","rmsea.ci.upper","aic","bic")
+    # Fit-index names changed in lavaan 0.7: preserve traditional LISREL GFI/AGFI.
+    all_fm <- tryCatch(lavaan::fitMeasures(fit),error=function(e) {
+      warns <<- c(warns,paste("적합도 추출 실패:",conditionMessage(e)))
+      numeric(0)
+    })
+    source_names <- setNames(as.list(keys),keys)
+    if("gfi_lisrel" %in% names(all_fm)) source_names$gfi <- "gfi_lisrel"
+    if("agfi_lisrel" %in% names(all_fm)) source_names$agfi <- "agfi_lisrel"
+    fm <- setNames(lapply(keys,function(k) {
+      v <- unname(all_fm[source_names[[k]]])
+      if(length(v)==1L && is.finite(v)) v else NA_real_
+    }),keys)
+    raw_fm <- fm
+    df0 <- is.finite(fm$df) && fm$df <= 0
+    if(df0) {
+      for(k in c("pvalue","cfi","gfi","agfi","tli","srmr","rmsea","rmsea.ci.lower","rmsea.ci.upper")) fm[[k]] <- NA_real_
+      warns <- c(warns,"df=0: 포화/정확식별 모형입니다. 적합도 판단 지표는 해석·순위에서 제외했습니다.")
+    }
+    paramOK <- nrow(params)==0L || all(is.finite(params$B) & is.finite(params$se) & is.finite(params$beta))
+    list(ok=TRUE,valid=admissible && paramOK && vc_ok && is.finite(fm$df) && fm$df>=0,vcovOK=vc_ok,admissible=admissible,parameterOK=paramOK,
+      n=as.integer(lavaan::lavInspect(fit,"nobs")),
+      fit=fm,rawFit=raw_fm,fitMeasureNames=source_names,params=params,warnings=as.list(unique(warns)),
+      lavaan=as.character(utils::packageVersion("lavaan")))
+  },warning=function(w){warns <<- c(warns,conditionMessage(w));invokeRestart("muffleWarning")}),
+  error=function(e) list(ok=FALSE,valid=FALSE,error=conditionMessage(e),warnings=as.list(unique(warns))))
+  path_json(ans)
+}
+`;
+
+// v2.2: Retain diagnostics independently of jsonlite and the failing R worker.
+const engineDiagnostics=[];
+function engineLog(text){
+ const line=`[${new Date().toLocaleTimeString("ko-KR")}] ${text}`;
+ engineDiagnostics.push(line);
+ $("engineLog").textContent=engineDiagnostics.join("\n");
+ log(text);
+}
+async function fetchEngineFile(url){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),90000);
+ try{
+  const response=await fetch(url,{signal:controller.signal,credentials:"omit"});
+  if(!response.ok)throw Error(`HTTP ${response.status} ${response.statusText}`);
+  return new Uint8Array(await response.arrayBuffer());
+ }catch(e){
+  throw Error(`${url} · ${e.name==="AbortError"?"90초 다운로드 시간 초과":e.message||String(e)}`);
+ }finally{clearTimeout(timer);}
+}
+// The first line is a machine-readable status; remaining lines are diagnostics.
+async function bootR(engine,expression){
+ const text=await engine.evalRString(`local({
+  notes <- character(); failure <- NULL
+  value <- tryCatch(withCallingHandlers({
+   ${expression}
+  }, warning=function(w){notes <<- c(notes,paste0("WARNING: ",conditionMessage(w))); invokeRestart("muffleWarning")},
+     message=function(m){notes <<- c(notes,paste0("MESSAGE: ",conditionMessage(m))); invokeRestart("muffleMessage")}),
+   error=function(e){failure <<- conditionMessage(e); NULL})
+  paste(c(if(is.null(failure)) "OK" else "ERROR",
+   notes,if(!is.null(failure)) paste0("ERROR: ",failure) else as.character(value)),collapse="\\n")
+ })`);
+ const [status,...details]=text.split("\n");
+ if(details.length)engineLog(details.join("\n"));
+ if(status!=="OK")throw Error(details.join("\n")||"R 초기화 단계 실패");
+ return details;
+}
+async function preparePackageIndex(engine,repo,rminor){
+ const contrib=`${repo.replace(/\/+$/,"")}/bin/emscripten/contrib/${rminor}`;
+ engineLog(`패키지 목록 확인 · ${contrib}`);
+ // Browser fetch makes HTTP/CORS failures visible and avoids R's synchronous
+ // available.packages() download path. The original repository is preserved.
+ for(const suffix of ["PACKAGES","PACKAGES.gz"]){
+  try{
+   let bytes=await fetchEngineFile(contrib+"/"+suffix);
+   if(suffix.endsWith(".gz")&&bytes[0]===31&&bytes[1]===139){
+    if(typeof DecompressionStream!=="function")throw Error("이 브라우저는 gzip 스트림 압축 해제를 지원하지 않습니다.");
+    bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+   }
+   const text=new TextDecoder().decode(bytes);
+   if(!/^Package:\s*\S+/m.test(text)||/<html[\s>]/i.test(text))throw Error("R 패키지 목록이 아닌 응답입니다.");
+   await engine.FS.writeFile("/home/web_user/path_PACKAGES",new TextEncoder().encode(text));
+   await bootR(engine,`
+    info <- read.dcf("/home/web_user/path_PACKAGES")
+    if(!all(c("Package","Version") %in% colnames(info))) stop("패키지 목록 필수 필드 누락")
+    rownames(info) <- info[,"Package"]
+    info <- info[!duplicated(rownames(info)),,drop=FALSE]
+    if(!"Repository" %in% colnames(info)) info <- cbind(info,Repository=${rq(contrib)})
+    info[,"Repository"] <- ${rq(contrib)}
+    assign(".path_pkg_info",info,envir=.GlobalEnv)
+    paste("저장소 목록 확인 완료:",nrow(info),"개 패키지")
+   `);
+   return contrib;
+  }catch(e){engineLog(`목록 읽기 실패 (${suffix}) · ${e.message||e}`);}
+ }
+ // Some hosts expose only PACKAGES.rds; let R try all supported index formats.
+ await bootR(engine,`
+  info <- utils::available.packages(contriburl=${rq(contrib)})
+  if(!nrow(info)) stop("저장소 패키지 목록을 읽지 못했습니다. 위 HTTP/네트워크 오류를 확인하세요.")
+  assign(".path_pkg_info",info,envir=.GlobalEnv)
+  paste("R 경로로 저장소 목록 확인:",nrow(info),"개 패키지")
+ `);
+ return contrib;
+}
+
+// Optional same-origin, version-locked package manifest. Never treat source as binary.
+async function installBundledPackages(engine,packages,rminor,base){
+ const manifestUrl=new URL("./wasm/manifest.json",location.href);
+ engineLog(`동봉 패키지 확인 · ${manifestUrl.href}`);
+ const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),15000);
+ let response;
+ try{response=await fetch(manifestUrl,{cache:"no-store",signal:ctl.signal,credentials:"omit"});}
+ catch(e){throw Error(`동봉 manifest 요청 실패: ${e.message}. 서버 연결을 확인하세요.`);}
+ finally{clearTimeout(timer);}
+ if(response.status===404){engineLog("동봉 manifest 없음 · 외부 저장소를 사용합니다.");return false;}
+ if(!response.ok)throw Error(`동봉 manifest HTTP ${response.status}`);
+ let manifest;
+ try{manifest=await response.json();}catch{throw Error("wasm/manifest.json이 JSON이 아닙니다. HTML 오류 페이지 또는 업로드 누락을 확인하세요.");}
+ if(manifest.schema!==1||!Array.isArray(manifest.packages))throw Error("동봉 manifest 형식 오류");
+ const webRVersion=new URL(base).pathname.match(/\/v([^/]+)\/$/)?.[1];
+ if(manifest.webR!==webRVersion||manifest.rMinor!==rminor)
+  throw Error(`동봉 빌드/엔진 불일치: 패키지 webR ${manifest.webR}, R ${manifest.rMinor}; 엔진 webR ${webRVersion}, R ${rminor}. 엔진을 임의로 바꾸지 마세요.`);
+ for(const p of packages){
+  if(await engine.evalRBoolean(`requireNamespace(${rq(p)},quietly=TRUE)`))continue;
+  const item=manifest.packages.find(x=>x.name===p);
+  if(!item)throw Error(`동봉 패키지 ${p} 누락. 완성된 wasm 폴더 전체를 업로드하세요.`);
+  if(!/^[A-Za-z0-9_.+-]+\.tgz$/.test(item.file)||!/^[a-f0-9]{64}$/.test(item.sha256))
+   throw Error(`${p}: manifest 파일명/해시 오류`);
+  const url=new URL(item.file,manifestUrl);
+  if(url.origin!==location.origin)throw Error("동봉 패키지는 같은 출처여야 합니다.");
+  engineLog(`${p} · 동봉 Wasm 다운로드 및 SHA-256 검증`);
+  const bytes=await fetchEngineFile(url.href);
+  const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),b=>b.toString(16).padStart(2,"0")).join("");
+  if(digest!==item.sha256)throw Error(`${p}: 파일 해시 불일치. 바이너리 모드로 다시 업로드하세요.`);
+  const dest=`/home/web_user/bundled_${p}.tgz`;
+  await engine.FS.writeFile(dest,bytes);
+  await bootR(engine,`
+   lib <- .libPaths()[1]
+   target <- file.path(lib,${rq(p)})
+   entries <- utils::untar(${rq(dest)},list=TRUE,tar="internal")
+   if(!length(entries) || any(grepl("(^/|(^|/)[.][.](/|$))",entries)) ||
+      !all(startsWith(entries,paste0(${rq(p)},"/")) | entries==${rq(p)}))
+      stop("안전하지 않거나 잘못된 패키지 압축 경로")
+   unlink(target,recursive=TRUE)
+   utils::untar(${rq(dest)},exdir=lib,tar="internal")
+   desc <- read.dcf(file.path(target,"DESCRIPTION"))
+   if(desc[1,"Package"]!=${rq(p)} || desc[1,"Version"]!=${rq(item.version)}) stop("패키지 이름/버전 불일치")
+   if(!"Built" %in% colnames(desc) || !grepl("emscripten",desc[1,"Built"])) stop("Wasm 바이너리가 아닙니다. CRAN 소스/Windows ZIP을 사용할 수 없습니다.")
+   loadNamespace(${rq(p)})
+   unlink(${rq(dest)})
+   paste(${rq(p)},as.character(utils::packageVersion(${rq(p)})),"동봉 namespace 로드 확인")
+  `);
+ }
+ return true;
+}
+
+async function ensureBootPackage(engine,p,repo,contrib){
+ const available=await engine.evalRBoolean(`requireNamespace(${rq(p)},quietly=TRUE)`);
+ if(available){engineLog(`${p} · 기존 namespace 로드 확인`);return;}
+ const listed=await engine.evalRBoolean(`${rq(p)} %in% rownames(.path_pkg_info)`);
+ if(!listed)throw Error(`${p}: 현재 엔진용 저장소 목록에 없습니다 (${contrib}). 완성 빌드의 wasm/ 폴더(manifest.json 및 .tgz 파일들)를 index.html 옆에 함께 업로드해야 합니다. CRAN 소스나 PC용 패키지로 대체할 수 없습니다.`);
+ engineLog(`${p} · Wasm 바이너리 설치 (압축 해제 방식)`);
+ try{
+  await bootR(engine,`
+   webr::install(${rq(p)},repos=${rq(repo)},info=.path_pkg_info,lib=.libPaths()[1],mount=FALSE)
+   loadNamespace(${rq(p)})
+   paste(${rq(p)},as.character(utils::packageVersion(${rq(p)})),"로드 확인")
+  `);
+ }catch(first){
+  // Retry the same binary using asynchronous browser fetch, not another ABI.
+  engineLog(`${p} · R 설치 경로 실패, 같은 바이너리를 브라우저 다운로드로 재시도`);
+  const url=await engine.evalRString(`paste0(.path_pkg_info[${rq(p)},"Repository"],"/",${rq(p)},"_",.path_pkg_info[${rq(p)},"Version"],".tgz")`);
+  try{
+   const bytes=await fetchEngineFile(url);
+   if(bytes.length<100)throw Error("패키지 응답이 비정상적으로 짧습니다.");
+   const dest=`/home/web_user/path_${p}.tgz`;
+   await engine.FS.writeFile(dest,bytes);
+   await bootR(engine,`
+    lib <- .libPaths()[1]
+    target <- file.path(lib,${rq(p)})
+    if(startsWith(target,"/home/web_user/path_library/")) unlink(target,recursive=TRUE)
+    utils::untar(${rq(dest)},exdir=lib,tar="internal",extras="--no-same-permissions")
+    if(!file.exists(file.path(target,"DESCRIPTION"))) stop("압축 해제 후 패키지 DESCRIPTION이 없습니다.")
+    loadNamespace(${rq(p)})
+    unlink(${rq(dest)})
+    paste(${rq(p)},as.character(utils::packageVersion(${rq(p)})),"브라우저 다운로드 후 로드 확인")
+   `);
+  }catch(second){throw Error(`${p} 설치/로드 실패\n첫 시도: ${first.message}\n대체 다운로드: ${second.message}`);}
+ }
+}
+
+// Single shared promise prevents simultaneous automatic/manual initializations.
+let enginePromise=null;
+async function initEngine(){
+ if(state.engine)return state.engine;
+ if(enginePromise)return enginePromise;
+ enginePromise=connectEngine();
+ try{return await enginePromise;}finally{enginePromise=null;}
+}
+async function connectEngine(){
+ const base=$("engineUrl").value.trim().replace(/\/?$/,"/"),repo=$("repoUrl").value.trim();
+ if(!/^https?:\/\//.test(base)||!/^https?:\/\//.test(repo))throw Error("엔진·저장소는 http(s) 주소여야 합니다.");
+ engineDiagnostics.length=0;
+ $("engineLog").textContent="";
+ engineLog(`초기화 시작 · 엔진 ${base} · 저장소 ${repo}`);
+ if(location.protocol==="file:")engineLog("주의: file://로 열었습니다. 실패하면 HTTP(S) 웹 서버에서 실행하세요.");
+ let engine;const init=$("init");init.disabled=true;
+ try{
+  engineLog("자동 연결 1/4 · webR 엔진 다운로드 및 시작 중…");
+  const {WebR,ChannelType}=await import(base+"webr.mjs");
+  engine=new WebR({baseUrl:base,repoUrl:repo,channelType:ChannelType.PostMessage,interactive:false});
+  await engine.init();
+  const runtime=await engine.evalRString(`paste(R.version.string,paste(.libPaths(),collapse="; "),sep=" | library: ")`);
+  engineLog(runtime);
+  await bootR(engine,`
+   dir.create("/home/web_user/path_library",recursive=TRUE,showWarnings=FALSE)
+   .libPaths(c("/home/web_user/path_library",.libPaths()))
+   paste("설치 라이브러리:",.libPaths()[1])
+  `);
+  const rminor=await engine.evalRString(`paste(R.version$major,strsplit(R.version$minor,".",fixed=TRUE)[[1]][1],sep=".")`);
+  const packages=["quadprog","MASS","mnormt","pbivnorm","numDeriv","jsonlite","lavaan"];
+  const missing=[];
+  for(const p of packages)if(!await engine.evalRBoolean(`requireNamespace(${rq(p)},quietly=TRUE)`))missing.push(p);
+  let bundled=false;
+  if(missing.length)bundled=await installBundledPackages(engine,packages,rminor,base);
+  if(missing.length&&!bundled){
+   const contrib=await preparePackageIndex(engine,repo,rminor);
+   for(const p of packages)await ensureBootPackage(engine,p,repo,contrib);
+  }else engineLog(bundled?"동봉 패키지 로드 완료 · 외부 저장소 목록 조회 생략":"모든 필수 패키지 namespace 로드 확인");
+  await bootR(engine,`
+   qp <- quadprog::solve.QP(diag(2),c(1,2),diag(2),c(0,0))
+   if(max(abs(qp$solution-c(1,2)))>1e-8) stop("quadprog 수치 점검 실패")
+   "quadprog 실제 최적화 계산 통과"
+  `);
+  engineLog("자동 연결 3/4 · lavaan · jsonlite 즉시 로드 및 분석 함수 준비 중…");
+  await engine.evalRVoid(R_BACKEND);
+  // Real minimal SEM fit detects namespace/compiled-function issues at startup.
+  engineLog("자동 연결 4/4 · lavaan 측정모형 시작 점검 중…");
+  await engine.evalRVoid(`local({
+   test <- lavaan::cfa('f =~ x1 + x2 + x3',
+    sample.cov=matrix(c(1,.5,.4,.5,1,.45,.4,.45,1),3,3,dimnames=list(c("x1","x2","x3"),c("x1","x2","x3"))),
+    sample.nobs=200L)
+   if(!isTRUE(lavaan::lavInspect(test,"converged"))) stop("lavaan 시작 점검 비수렴")
+  }); invisible(NULL)`);
+  const versions=await engine.evalRString(`jsonlite::toJSON(list(R=R.version.string,lavaan=as.character(packageVersion("lavaan")),jsonlite=as.character(packageVersion("jsonlite")),quadprog=as.character(packageVersion("quadprog"))),auto_unbox=TRUE)`);
+  state.engine=engine;
+  state.engineMeta={...JSON.parse(versions),engineBase:base,repo,installMode:bundled?"same-origin-sha256-bundle":"repository-fallback",connectedAt:stamp(),webR:engine.version||null,startupCheck:"three-indicator-CFA"};
+  engineLog("연결 완료 · lavaan 로드 및 측정모형 시작 점검 완료 · "+versions);
+  init.textContent="연결 완료 / 상태 확인";
+  return engine;
+ }catch(e){
+  if(engine)try{await engine.close();}catch{}
+  state.engine=null;state.engineMeta=null;
+  engineLog("자동 연결 실패 · "+(e.message||String(e))+"\n네트워크·Wasm 저장소·엔진 ABI를 확인한 뒤 연결 재시도를 누르세요.");
+  init.textContent="연결 재시도";
+  throw e;
+ }finally{init.disabled=state.busy;}
+}
+async function installPrepared(prep){
+ await state.engine.FS.writeFile("/home/web_user/path_data.csv",new TextEncoder().encode(prep.data));
+ await state.engine.evalRVoid(`.path_dat <- read.csv("/home/web_user/path_data.csv",check.names=FALSE,na.strings=""); .path_model <- ${rq(state.model.syntax)}; .path_missing <- ${rq(prep.missing)}; invisible(NULL)`);
+}
+async function fit(drop=[]){const r=JSON.parse(await state.engine.evalRString(`path_fit(${rv(drop)})`));r.params=Array.isArray(r.params)?r.params:r.params?[r.params]:[];r.warnings=Array.isArray(r.warnings)?r.warnings:[];r.at=stamp();return r;}
+function flatten(r){const o={};if(!r?.ok)return o;for(const [k,v]of Object.entries(r.fit||{}))o["fit:"+k]=v;for(const p of r.params||[]){for(const f of ["B","beta","p","se","z","lower","upper"])o[`par:${p.key}:${f}`]=p[f];o[`par:${p.key}:width`]=finite(p.upper)&&finite(p.lower)?p.upper-p.lower:null;}return o;}
+const fitLabels={chisq:"χ²",df:"df",pvalue:"χ² p",cfi:"CFI",gfi:"GFI",agfi:"AGFI",tli:"TLI",srmr:"SRMR",rmsea:"RMSEA","rmsea.ci.lower":"RMSEA 90% CI 하한","rmsea.ci.upper":"RMSEA 90% CI 상한",aic:"AIC",bic:"BIC"};
+function deriveMetrics(){
+ const f=flatten(state.baseline);state.metrics=[];
+ for(const [k,v]of Object.entries(f)){
+ if(k.startsWith("fit:")){const name=k.slice(4);if(name==="df")continue;state.metrics.push({key:k,label:fitLabels[name]||name,default:["pvalue","cfi","gfi","agfi","tli"].includes(name)?"max":"min",available:finite(v)&&!(name==="chisq"&&state.baseline.fit.df<=0)});}
+ else{const [,p,field]=k.split(":");const lab={B:"B",beta:"β",p:"p",se:"SE",z:"z",lower:"95% CI 하한",upper:"95% CI 상한",width:"95% CI 폭"}[field];state.metrics.push({key:k,label:`${state.model.labelNames[p]||p} | ${lab}`,default:["p","se","width"].includes(field)?"min":"absmax",available:finite(v)&&!(p.startsWith("load_")&&state.baseline.params.find(q=>q.key===p)?.se===0&&["p","se","z","lower","upper","width"].includes(field))});}
+ }
+ renderPriorities();
+}
+function renderPriorities(){
+ const previous=[...document.querySelectorAll(".priority[data-index]")].map(r=>({key:r.querySelector(".metric").value,dir:r.querySelector(".direction").value,target:r.querySelector(".target").value,tol:r.querySelector(".tolerance").value}));
+ $("priorities").innerHTML=Array.from({length:10},(_,i)=>{const p=previous[i]||{};return`<div class="priority" data-index="${i}"><strong>${i+1}</strong><select class="metric" aria-label="우선순위 ${i+1} 지표"><option value="">선택 안 함</option>${state.metrics.map(m=>`<option value="${esc(m.key)}" ${p.key===m.key?"selected":""} ${!m.available?"disabled":""}>${esc(m.label)}${!m.available?" (사용 불가)":""}</option>`).join("")}</select><select class="direction" aria-label="좋은 방향">${[["max","클수록"],["min","작을수록"],["absmax","절댓값 클수록"],["absmin","절댓값 작을수록"],["target","목표에 가까울수록"]].map(([k,l])=>`<option value="${k}" ${p.dir===k?"selected":""}>${l}</option>`).join("")}</select><input class="target" type="number" step="any" value="${esc(p.target||"0")}" aria-label="목표값"><input class="tolerance" type="number" min="0" step="any" value="${esc(p.tol||"0")}" aria-label="동점 구간폭"></div>`;}).join("");
+ document.querySelectorAll(".metric").forEach(s=>s.onchange=()=>{const m=state.metrics.find(m=>m.key===s.value);if(m)s.parentElement.querySelector(".direction").value=m.default;syncPriorityOptions();});
+ syncPriorityOptions();
+}
+function syncPriorityOptions(){const s=[...document.querySelectorAll(".metric")];const chosen=s.map(x=>x.value).filter(Boolean);for(const el of s)for(const o of el.options){const m=state.metrics.find(m=>m.key===o.value);o.disabled=!!m&&(!m.available||(o.value!==el.value&&chosen.includes(o.value)));}}
+function priorities(){const rows=[...document.querySelectorAll(".priority[data-index]")];return rows.map((r,i)=>({slot:i+1,key:r.querySelector(".metric").value,dir:r.querySelector(".direction").value,target:Number(r.querySelector(".target").value),tol:Number(r.querySelector(".tolerance").value)})).filter(p=>p.key).map(p=>{if(!finite(p.target)||!finite(p.tol)||p.tol<0)throw Error("목표값·동점 구간폭을 확인하세요.");return{...p,label:state.metrics.find(m=>m.key===p.key)?.label||p.key};});}
+function score(value,p){if(!finite(value))return null;let s=p.dir==="min"?-value:p.dir==="max"?value:p.dir==="absmax"?Math.abs(value):p.dir==="absmin"?-Math.abs(value):-Math.abs(value-p.target);return p.tol>0?Math.round(s/p.tol):s;}
+function sortRows(){
+ const ps=priorities();state.loo.sort((a,b)=>{const aok=!!(a.result.ok&&a.result.valid),bok=!!(b.result.ok&&b.result.valid);if(aok!==bok)return aok?-1:1;
+ for(const p of ps){const av=score(a.flat[p.key],p),bv=score(b.flat[p.key],p);if(av===null&&bv!==null)return 1;if(bv===null&&av!==null)return -1;if(av!==null&&bv!==null&&av!==bv)return av>bv?-1:1;}return a.row-b.row;});
+ state.loo.forEach((r,i)=>r.rank=i+1);if(state.looMeta)state.looMeta.currentPriorities=ps;state.page=0;renderRank();
+}
+function caseLabel(row){const col=$("idColumn").value;return col===""?String(row):`${row} · ${state.rows[row-1]?.[Number(col)]??""}`;}
+function parseExclusions(){const text=$("excludeRows").value.trim();if(!text)return[];const nums=new Set();for(const token of text.split(/[,;\s]+/).filter(Boolean)){const m=token.match(/^(\d+)(?:-(\d+))?$/);if(!m)throw Error(`행 번호 형식 오류: ${token}`);const a=Number(m[1]),b=Number(m[2]||a);if(a<1||b<a||b>state.rows.length)throw Error(`행 번호 범위 오류: ${token}`);for(let i=a;i<=b;i++)nums.add(i);}return[...nums].sort((a,b)=>a-b);}
+function renderRank(){
+ const ps=priorities();const filter=$("rankFilter").value.toLowerCase();const all=state.loo.filter(r=>caseLabel(r.row).toLowerCase().includes(filter));const size=Number($("pageSize").value),pages=Math.max(1,Math.ceil(all.length/size));state.page=Math.max(0,Math.min(state.page,pages-1));$("pageText").textContent=`${state.page+1} / ${pages} · ${all.length}건`;
+ if(!state.loo.length){$("looTable").innerHTML="";return;}
+ let selected=new Set();try{selected=new Set(parseExclusions());}catch{}
+ const start=state.page*size;const base=flatten(state.looMeta?.sourceResult||state.baseline);
+ $("looTable").innerHTML="<table><thead><tr><th>선택</th><th>순위</th><th>추가 제외 행 · ID</th><th>N</th><th>상태 / 경고</th>"+ps.map(p=>`<th>${esc(p.slot+". "+p.label)}<br>값 / Δ출발집합</th>`).join("")+"</tr></thead><tbody>"+all.slice(start,start+size).map(r=>`<tr><td><input type="checkbox" data-case="${r.row}" ${selected.has(r.row)?"checked":""} aria-label="${r.row}번 사례 선택"></td><td>${r.rank}</td><td>${esc(caseLabel(r.row))}</td><td>${r.result.n??"—"}</td><td class="${r.result.ok&&r.result.valid?"ok":"bad"}" title="${esc([r.result.error,...r.result.warnings].filter(Boolean).join("\n"))}">${r.result.ok?(r.result.valid?"정상":"부적절한 해"):"실패"}${r.result.warnings.length?" · 경고 "+r.result.warnings.length:""}</td>`+ps.map(p=>`<td>${fmt(r.flat[p.key])}<br><span class="note">${finite(r.flat[p.key])&&finite(base[p.key])?fmt(r.flat[p.key]-base[p.key]):"—"}</span></td>`).join("")+"</tr>").join("")+"</tbody></table>";
+ document.querySelectorAll("[data-case]").forEach(c=>c.onchange=()=>{try{const s=new Set(parseExclusions());const n=Number(c.dataset.case);if(c.checked){for(const fixed of state.looMeta?.fixedExcluded||[])s.add(fixed);s.add(n);}else s.delete(n);$("excludeRows").value=[...s].sort((a,b)=>a-b).join(", ");}catch(e){c.checked=!c.checked;message(e.message,true);}});
+}
+function resultRows(){
+ if(!state.baseline)return[];const b=state.baseline,s=state.scenario?.result;
+ return b.params.map(p=>{const q=s?.params?.find(q=>q.key===p.key);return[state.model.labelNames[p.key]||p.key,p.kind==="measurement"?"요인적재":p.kind==="path"?"구조경로":(state.model.defs.find(d=>d.key===p.key)?.type||"정의효과"),p.B,p.beta,p.p,p.lower,p.upper,q?.B,q?.beta,q?.p,q?.lower,q?.upper,q&&finite(q.B)&&finite(p.B)?q.B-p.B:null];});
+}
+function renderResults(){
+ const b=state.baseline,s=state.scenario?.result;if(!b)return;
+ $("baselineInfo").textContent=`원자료 로드 ${state.rows.length}명 / 분석 가능 ${state.prepared.usable.length}명 / 결측 처리 제외 ${state.prepared.omitted.length}명 · 분석 N=${b.n} · ${state.prepared.missing} · ${b.valid?"적절한 해":"주의: 부적절한 해·모수 공분산 불안정 또는 SE/표준화 계산 불가"} · lavaan ${b.lavaan} · GFI/AGFI=전통 LISREL 정의`;
+ const displayFit=(r,k)=>{if(!r)return "—";const raw=r.rawFit?.[k];return fmt(r.fit[k])+(r.fit.df<=0&&!["chisq","df","aic","bic"].includes(k)&&finite(raw)?` [참고 ${fmt(raw)}; df=0]`:"");};
+ $("fitResults").classList.remove("hidden");$("fitResults").innerHTML=table(["지표","원자료","시나리오","Δ"],Object.entries(fitLabels).map(([k,l])=>[l,displayFit(b,k),displayFit(s,k),finite(b.fit[k])&&finite(s?.fit?.[k])&&!(b.fit.df<=0&&k==="chisq")?fmt(s.fit[k]-b.fit[k]):"—"]));
+ $("parameterResults").classList.remove("hidden");$("parameterResults").innerHTML=table(["효과","구분","원 B","원 β","원 p","원 CI 하한","원 CI 상한","제외 B","제외 β","제외 p","제외 CI 하한","제외 CI 상한","ΔB"],resultRows().map(r=>r.map((v,i)=>i<2?v:fmt(v))));
+ const warn=[...(b.warnings||[]).map(w=>"원자료: "+w),...(s?.warnings||[]).map(w=>"시나리오: "+w)];$("warnings").innerHTML=warn.length?`<div class="notice warning">${warn.map(esc).join("<br>")}</div>`:"";
+ if(state.scenario)$("scenarioInfo").textContent=`시나리오 분석 N=${s.n} / 요청 제외 ${state.scenario.excluded.length}명 / 실제 분석집합 제외 ${state.scenario.effective.length}명 · 행: ${state.scenario.excluded.join(", ")||"없음"} · 근거: ${state.scenario.reason}`;
+}
+async function runBaseline(){
+ await initEngine();requireEngine();requireModel();const prep=prepare();log("원자료 모형 추정 중…");await installPrepared(prep);const r=await fit();if(!r.ok)throw Error("원자료 분석 실패: "+r.error);
+ resetGroup();state.prepared=prep;state.baseline=r;state.scenario=null;state.loo=[];state.looMeta=null;state.page=0;
+ state.history.push({type:"baseline",at:stamp(),model:state.model.syntax,roles:structuredClone(state.roles),removed:[...state.removed],missing:prep.missing,n:r.n,omitted:prep.omitted,valid:r.valid});
+ renderResults();deriveMetrics();renderGoals();renderRank();renderHistory();$("scenarioInfo").textContent="제외 시나리오 없음";log("기본분석 완료 · N="+r.n);message(r.valid?"기본분석 완료. 우선순위를 선택할 수 있습니다.":"기본분석은 끝났으나 부적절한 해 또는 계산 불가가 있습니다. 경고를 확인하세요.");
+}
+async function runLOO(){
+ requireEngine();requireBase();if(!$("ack").checked)throw Error("탐색적 분석 확인란을 선택하세요.");const ps=priorities();if(!ps.length)throw Error("우선순위를 1개 이상 선택하세요.");if(!state.baseline.valid)throw Error("원자료 해가 부적절합니다. 먼저 모형·데이터를 확인하세요.");
+ let fixed=[];let source=state.baseline;
+ if($("looSource").value==="scenario"){if(!state.scenario)throw Error("현재 시나리오를 먼저 분석하세요.");if(!state.scenario.result.valid)throw Error("현재 시나리오 해가 부적절합니다.");fixed=state.scenario.effective.slice();source=state.scenario.result;}
+ const candidates=state.prepared.usable.filter(i=>!fixed.includes(i));state.stop=false;state.runningLOO=true;$("stopLOO").disabled=false;state.loo=[];
+ state.looMeta={startedAt:stamp(),fixedExcluded:fixed,source:$("looSource").value,sourceResult:source,initialPriorities:ps,currentPriorities:ps,total:candidates.length,completed:0,stopped:false};
+ $("progress").max=candidates.length;$("progress").value=0;
+ const started=performance.now();log("단일 사례 제외 반복 중…");
+ for(let i=0;i<candidates.length;i++){
+  if(state.stop)break;const row=candidates[i];const result=await fit([...fixed,row]);state.loo.push({row,excluded:[...fixed,row],result,flat:flatten(result)});state.looMeta.completed=i+1;
+  const elapsed=(performance.now()-started)/1000,remain=elapsed/(i+1)*(candidates.length-i-1);$("progress").value=i+1;$("progressText").textContent=`${i+1} / ${candidates.length} · 경과 ${elapsed.toFixed(1)}초 · 예상 남은 시간 ${remain.toFixed(0)}초 · 최근 행 ${row}`;
+  if((i+1)%10===0)await new Promise(r=>setTimeout(r,0));
+ }
+ state.looMeta.stopped=state.stop;state.looMeta.finishedAt=stamp();sortRows();
+ const failed=state.loo.filter(r=>!r.result.ok||!r.result.valid).length;
+ state.history.push({type:"loo",...structuredClone(state.looMeta),sourceResult:undefined,failed});renderHistory();
+ log(`단일 제외 ${state.stop?"중지":"완료"} · ${state.loo.length}/${candidates.length}회 · 실패/부적절한 해 ${failed}회`);
+ message("순위는 자동 사례 삭제가 아닙니다. 선택 사례는 체크박스와 시나리오 분석으로 별도 비교하세요.");
+}
+async function compare(){
+ requireEngine();requireBase();const excluded=parseExclusions();const reason=$("reason").value.trim();if(excluded.length&&!reason)throw Error("제외 근거나 시나리오 이름을 입력하세요.");const effective=excluded.filter(n=>state.prepared.usable.includes(n));
+ log("제외 시나리오 추정 중…");const result=await fit(effective);
+ state.history.push({type:"scenario",at:stamp(),excluded,effective,reason,ok:result.ok,result});renderHistory();if(!result.ok)throw Error("시나리오 분석 실패(이력에 저장됨): "+result.error);
+ state.scenario={excluded,effective,reason:reason||"제외 없음",result,at:stamp()};renderResults();log("시나리오 비교 완료 · N="+result.n);message(effective.length!==excluded.length?"일부 선택 사례는 이미 결측 처리로 제외되어 있습니다. 실제 분석집합 제외 수를 확인하세요.":"비교 완료. 원자료 값은 그대로 보존됩니다.");
+}
+function renderHistory(){$("history").innerHTML=table(["시각 (UTC)","종류","요약"],state.history.map(h=>[h.at||h.startedAt,h.type,h.type==="baseline"?`N=${h.n}, ${h.missing}, 경로 제외 ${h.removed.length}개`:h.type==="loo"?`${h.completed}/${h.total}, 실패 ${h.failed}, 고정 제외 ${h.fixedExcluded.join(",")||"없음"}`:`행 ${h.excluded.join(",")||"없음"} / ${h.reason} / ${h.ok?"추정 완료":"실패"}`]));}
+function exportR(){
+ requireModel();const prep=state.prepared||prepare();const excluded=state.scenario?.effective||[];
+ const text=`# PATH SEM 2.4 / ${stamp()}\n# 잠재변인 SEM / 연속형 관측지표 ML. 첫 적재량 1 고정. 비부트스트랩, 델타법 95% CI.\n# 원자료와 탐색적 제외 시나리오를 모두 보고하세요.\n# 이 앱의 '매핑된 분석 데이터 CSV 저장' 파일을 같은 폴더에 둡니다.\n# 제외 시나리오는 마지막으로 성공한 비교 기준입니다. 입력창의 미분석 후보는 반영하지 않습니다.\n# 매핑: ${[...state.model.nodes,...state.model.indicators].map(n=>n.alias+"="+JSON.stringify(n.name)).join("; ")}\n# 원본에서 결측 규칙으로 제외된 행: ${prep.omitted.join(",")||"없음"}\n# 시나리오 요청 제외: ${state.scenario?.excluded?.join(",")||"없음"}\n# 시나리오 근거: ${JSON.stringify(state.scenario?.reason||"없음")}\nif (!requireNamespace("lavaan",quietly=TRUE)) stop("lavaan 설치가 필요합니다.")\nlibrary(lavaan)\nd <- read.csv("path_analysis_data.csv",check.names=FALSE,na.strings="")\nmodel <- ${rq(state.model.syntax)}\nrun <- function(dat) {\n args <- list(model=model,data=dat[,setdiff(names(dat),".row"),drop=FALSE],estimator="ML",se="standard",test="standard",missing=${rq(prep.missing)},fixed.x=FALSE,meanstructure=TRUE,auto.cov.y=FALSE,control=list(iter.max=1500L))\n supported <- gsub("_",".",names(lavOptions()),fixed=TRUE)\n if ("se.def" %in% supported) args$se.def <- "delta"\n if ("se.delta.second.order" %in% supported) args$se.delta.second.order <- FALSE\n do.call(sem,args)\n}\nfit_full <- run(d)\nprint(summary(fit_full,standardized=TRUE,fit.measures=TRUE,ci=TRUE))\nfm <- fitMeasures(fit_full)\nprint(fm[intersect(c("chisq","df","pvalue","cfi","gfi","agfi","gfi_lisrel","agfi_lisrel","tli","srmr","rmsea"),names(fm))])\nprint(parameterEstimates(fit_full,standardized=TRUE,ci=TRUE,level=.95))\nexcluded <- ${rv(excluded)}\nfit_scenario <- run(d[!(d$.row %in% excluded),,drop=FALSE])\nprint(summary(fit_scenario,standardized=TRUE,fit.measures=TRUE,ci=TRUE))\n# df=0에서는 적합도 해석/순위를 하지 않습니다.\n# 실제 버전 확인:\nsessionInfo()\n`;
+ download("path_reproduce.R",text);
+}
+function exportRank(){requireBase();if(!state.loo.length)throw Error("단일 제외 분석 결과가 없습니다.");const ps=priorities();sortRows();const keys=Object.keys(flatten(state.baseline));const base=flatten(state.looMeta.sourceResult);
+ const h=["rank","added_excluded_row","display_id","fixed_excluded","all_excluded","n","ok","valid","warnings","error",...ps.map(p=>`priority_${p.slot}_${p.label}_${p.dir}_target${p.target}_bin${p.tol}`),...keys.flatMap(k=>[k,"delta_source:"+k])];
+ const rows=state.loo.map(r=>[r.rank,r.row,caseLabel(r.row),state.looMeta.fixedExcluded.join(";"),r.excluded.join(";"),r.result.n,r.result.ok,r.result.valid,r.result.warnings.join(" | "),r.result.error,...ps.map(p=>r.flat[p.key]),...keys.flatMap(k=>[r.flat[k],finite(r.flat[k])&&finite(base[k])?r.flat[k]-base[k]:null])]);download("path_loo_ranking.csv",csv(h,rows),"text/csv;charset=utf-8");
+}
+function exportReport(){requireBase();const report={application:"PATH",version:"2.2",exportedAt:stamp(),warning:"Exploratory, outcome-informed case deletion is not confirmatory inference. CIs/p-values do not adjust for selection.",engine:state.engineMeta,file:state.filename,sourceSHA256:state.sourceHash,originalN:state.rows.length,columns:state.headers,idColumn:$("idColumn").value===""?null:state.headers[Number($("idColumn").value)],caseIdentifiers:$("idColumn").value===""?null:state.rows.map((r,i)=>({row:i+1,id:r[Number($("idColumn").value)]})),mapping:{latent:state.model.nodes,observed:state.model.indicators},roles:state.roles,excludedPaths:[...state.removed],lavaanSyntax:state.model.syntax,missing:state.prepared.missing,eligibleRows:state.prepared.usable,missingOmittedRows:state.prepared.omitted,baseline:state.baseline,scenario:state.scenario,currentPriorities:priorities(),looMeta:state.looMeta,loo:state.loo,groupSearch:state.group,groupSearchArchive:state.groupArchive,history:state.history,unanalysedSelection:$("excludeRows").value,unanalysedReason:$("reason").value};
+ download("path_analysis_report.json",JSON.stringify(report,null,2),"application/json;charset=utf-8");}
+function exportComparison(){requireBase();const rows=Object.entries(fitLabels).map(([k,l])=>["fit",l,state.baseline.fit[k],null,null,null,null,state.scenario?.result.fit?.[k],null,null,null,null,finite(state.baseline.fit[k])&&finite(state.scenario?.result.fit?.[k])?state.scenario.result.fit[k]-state.baseline.fit[k]:null]);
+ rows.push(...resultRows().map(r=>[r[1],r[0],...r.slice(2)]));download("path_comparison.csv",csv(["type","effect","original_B_or_fit","original_beta","original_p","original_CI_lower","original_CI_upper","scenario_B_or_fit","scenario_beta","scenario_p","scenario_CI_lower","scenario_CI_upper","delta_B_or_fit"],rows),"text/csv;charset=utf-8");}
+
+// PATH SEM 2.4: exact-k goal-constrained sensitivity search. No remote data submission.
+function resetGroup(){
+ if(state.group)state.groupArchive.push(state.group);
+ state.group=null;
+ $("groupTable").innerHTML="";$("groupDetail").innerHTML="";
+ $("groupStatus").textContent="설정 변경됨 · 기본분석과 목표를 다시 확인하세요.";
+ $("groupProgress").value=0;renderGoals();renderGroupHistory();
+}
+function renderGoals(previous=null){
+ const old=previous||[...document.querySelectorAll(".goal[data-slot]")].map(r=>({
+ key:r.querySelector(".gmetric").value,op:r.querySelector(".gop").value,
+ value:r.querySelector(".gvalue").value,epsilon:r.querySelector(".geps").value}));
+ $("goals").innerHTML=Array.from({length:10},(_,i)=>{
+ const p=old[i]||{};
+ return `<div class="goal" data-slot="${i+1}"><strong>${i+1}</strong><select class="gmetric" aria-label="목표 ${i+1} 지표"><option value="">선택 안 함</option>${state.metrics.map(m=>`<option value="${esc(m.key)}" ${m.available?"":"disabled"} ${p.key===m.key?"selected":""}>${esc(m.label)}${m.available?"":" (사용 불가)"}</option>`).join("")}</select><select class="gop" aria-label="목표 조건">${[["ge","≥ 이상"],["le","≤ 이하"],["near","목표 ± 오차"]].map(([v,l])=>`<option value="${v}" ${p.op===v?"selected":""}>${l}</option>`).join("")}</select><input type="number" step="any" class="gvalue" value="${esc(p.value??"")}" aria-label="목표값"><input type="number" min="0" step="any" class="geps" value="${esc(p.epsilon??"0")}" aria-label="목표 허용오차"></div>`;
+ }).join("");
+}
+function readGoals(){
+ const out=[];
+ for(const r of document.querySelectorAll(".goal[data-slot]")){
+  const key=r.querySelector(".gmetric").value;if(!key)continue;
+  const metric=state.metrics.find(m=>m.key===key);
+  if(!metric?.available)throw Error("사용 불가능한 목표 지표입니다. 기본분석을 다시 확인하세요.");
+  const text=r.querySelector(".gvalue").value;
+  const op=r.querySelector(".gop").value,ep=r.querySelector(".geps").value;
+  const value=Number(text),epsilon=op==="near"?Number(ep):0;
+  if(!text.trim()||!finite(value)||!finite(epsilon)||epsilon<0||(op==="near"&&!ep.trim()))throw Error("선택한 목표의 목표값과 허용오차를 입력하세요.");
+  if(out.some(g=>g.key===key&&g.op===op))throw Error("동일 지표·조건을 중복 지정하지 마세요. 같은 지표의 ≥와 ≤는 함께 지정할 수 있습니다.");
+  out.push({slot:Number(r.dataset.slot),key,label:metric.label,op,value,epsilon});
+ }
+ if(!out.length)throw Error("목표 지표를 1개 이상 지정하세요.");
+ return out;
+}
+function parseRowText(text){
+ if(!text.trim())return[];
+ const out=new Set();
+ for(const token of text.trim().split(/[,;\s]+/).filter(Boolean)){
+ const m=token.match(/^(\d+)(?:-(\d+))?$/);if(!m)throw Error("행 번호 형식 오류: "+token);
+ const a=Number(m[1]),b=Number(m[2]||a);
+ if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<1||b<a||b>state.rows.length)throw Error("행 번호 범위 오류: "+token);
+ for(let i=a;i<=b;i++)out.add(i);
+ }return [...out].sort((a,b)=>a-b);
+}
+function intInput(id,min,max){const v=Number($(id).value);if(!Number.isInteger(v)||v<min||v>max)throw Error(`${$(id).parentElement.textContent.trim()}: ${min}–${max} 정수를 입력하세요.`);return v;}
+function chooseBig(n,k){if(k<0||k>n)return 0n;let c=1n;k=Math.min(k,n-k);for(let i=1;i<=k;i++)c=c*BigInt(n-k+i)/BigInt(i);return c;}
+function groupConfig(){
+ requireBase();if(!state.baseline.valid)throw Error("원자료 추정이 부적절합니다. 모형·데이터를 먼저 확인하세요.");
+ const k=intInput("groupK",1,100),budget=intInput("groupBudget",1,5000),beam=intInput("groupBeam",1,100),
+ seed=intInput("groupSeed",1,4294967295),top=intInput("groupTop",1,100),minN=intInput("groupMinN",1,state.prepared.usable.length);
+ const fixed=parseRowText($("groupFixed").value),protectedRows=parseRowText($("groupProtected").value),
+ restricted=parseRowText($("groupPool").value),usable=new Set(state.prepared.usable);
+ for(const row of [...fixed,...protectedRows,...restricted])if(!usable.has(row))throw Error(`${row}번은 결측 처리로 이미 제외된 사례입니다.`);
+ if(fixed.some(r=>protectedRows.includes(r)))throw Error("고정 제외와 보호 사례가 겹칩니다.");
+ if(restricted.some(r=>fixed.includes(r)||protectedRows.includes(r)))throw Error("추가 후보 목록에서 고정 제외·보호 사례를 빼세요.");
+ const pool=(restricted.length?restricted:state.prepared.usable.filter(r=>!fixed.includes(r)&&!protectedRows.includes(r))).slice();
+ const need=k-fixed.length;
+ if(need<0||need>pool.length)throw Error("총 제외 수는 고정 제외 수 이상, 고정 제외+후보 수 이하여야 합니다.");
+ if(state.prepared.usable.length-k<Math.max(minN,state.model.indicators.length+2))throw Error("제외 후 N이 최소 잔여 N 또는 변수 수+2보다 작습니다.");
+ const count=chooseBig(pool.length,need);
+ const requested=$("groupMode").value,mode=requested==="auto"?(count<=BigInt(budget)?"exact":"beam"):requested;
+ if(mode==="beam"&&budget<Math.max(1,need))throw Error("빔 탐색 예산은 추가 제외 수 이상이어야 합니다.");
+ if(mode==="exact"&&count>BigInt(budget))throw Error(`전수 조합 ${count.toString()}개가 예산을 초과합니다. 예산을 늘리거나 후보를 한정하거나 빔 탐색을 선택하세요.`);
+ return{k,budget,beam,seed,top,minN,fixed,protectedRows,pool,need,count:count.toString(),mode,requested,
+ goals:readGoals(),priorities:priorities(),reason:$("groupReason").value.trim()};
+}
+function goalGap(v,g){
+ if(!finite(v))return Infinity;
+ // Numerical round-off only, not a user-facing tolerance for inequalities.
+ let d=g.op==="ge"?g.value-v:g.op==="le"?v-g.value:Math.abs(v-g.value)-g.epsilon;
+ if(d<=Number.EPSILON*8*Math.max(1,Math.abs(v),Math.abs(g.value)))d=0;
+ return Math.max(0,d);
+}
+function goalStats(flat,goals){
+ const gaps=goals.map(g=>goalGap(flat[g.key],g));
+ return{gaps,met:gaps.filter(x=>x===0).length,complete:gaps.every(x=>x===0),finite:gaps.every(Number.isFinite)};
+}
+function compareGroups(a,b,cfg){
+ const aa=!!(a.result.ok&&a.result.valid&&a.goal.finite),bb=!!(b.result.ok&&b.result.valid&&b.goal.finite);
+ if(aa!==bb)return aa?-1:1;
+ for(let i=0;i<cfg.goals.length;i++){const x=a.goal.gaps[i],y=b.goal.gaps[i];if(x!==y)return x<y?-1:1;}
+ for(const p of cfg.priorities){const x=score(a.flat[p.key],p),y=score(b.flat[p.key],p);if(x===null&&y!==null)return 1;if(y===null&&x!==null)return -1;if(x!==null&&y!==null&&x!==y)return x>y?-1:1;}
+ for(let i=0;i<Math.min(a.excluded.length,b.excluded.length);i++)if(a.excluded[i]!==b.excluded[i])return a.excluded[i]-b.excluded[i];
+ return a.excluded.length-b.excluded.length;
+}
+function* combinations(arr,k,start=0,prefix=[]){
+ if(k===0){yield prefix;return;}
+ for(let i=start;i<=arr.length-k;i++)yield*combinations(arr,k-1,i+1,[...prefix,arr[i]]);
+}
+function seeded(seed){return()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return(seed+.5)/4294967296;};}
+function targetText(g){return `${g.op==="ge"?"≥":g.op==="le"?"≤":"≈"} ${g.value}${g.op==="near"?" ± "+g.epsilon:""}`;}
+function groupSnapshot(){
+ return {file:state.filename,sourceSHA256:state.sourceHash,originalN:state.rows.length,
+ engine:structuredClone(state.engineMeta),model:state.model.syntax,mapping:structuredClone({latent:state.model.nodes,observed:state.model.indicators}),
+ labels:{...state.model.labelNames},missing:state.prepared.missing,eligibleRows:[...state.prepared.usable],
+ omittedRows:[...state.prepared.omitted],baseline:structuredClone(state.baseline)};
+}
+function renderGroupHistory(){
+ $("groupHistory").innerHTML=table(["시각 UTC","방법","제외 k","평가 수","목표 달성 최종 조합","종료"],[...state.groupArchive,...(state.group?[state.group]:[])].map(g=>[
+ g.startedAt,g.config.mode,g.config.k,g.evaluated,g.satisfied,g.termination||"진행 중"]));
+}
+async function runGroup(){
+ requireEngine();const cfg=groupConfig();
+ if(!$("groupAck").checked)throw Error("목표 기반 탐색 확인란을 선택하세요.");
+ if(!cfg.reason)throw Error("탐색 목적·사전 제외 근거를 기록하세요.");
+ if(state.group)state.groupArchive.push(state.group);
+ const run={id:stamp(),startedAt:stamp(),config:cfg,context:groupSnapshot(),evaluated:0,finalEvaluated:0,invalid:0,
+ satisfied:0,top:[],audit:[],termination:null,exhaustive:false,sampling:false};
+ state.group=run;state.stop=false;state.runningGroup=true;$("stopGroup").disabled=false;
+ $("groupTable").innerHTML="";$("groupDetail").innerHTML="";$("groupProgress").max=cfg.mode==="exact"?Number(cfg.count):cfg.budget;
+ const started=performance.now(),cmp=(a,b)=>compareGroups(a,b,cfg);
+ const keep=(items,item,limit)=>{items.push(item);items.sort(cmp);if(items.length>limit)items.length=limit;};
+ async function evaluate(excluded,depth){
+  let result;try{result=await fit(excluded);}catch(e){result={ok:false,valid:false,error:String(e.message||e),params:[],warnings:[]};}
+  const flat=flatten(result),goal=goalStats(flat,cfg.goals),item={excluded,result,flat,goal};
+  run.evaluated++;
+  const eligible=!!(result.ok&&result.valid&&goal.finite),final=excluded.length===cfg.k;
+  if(!eligible)run.invalid++;
+  if(final){run.finalEvaluated++;if(eligible){if(goal.complete)run.satisfied++;keep(run.top,item,cfg.top);}}
+  run.audit.push({index:run.evaluated,excluded,depth,final,n:result.n,ok:result.ok,valid:result.valid,
+   targetValues:cfg.goals.map(g=>finite(flat[g.key])?flat[g.key]:null),
+   gaps:goal.gaps.map(x=>finite(x)?x:null),met:goal.met,eligible,
+   priorityValues:cfg.priorities.map(p=>finite(flat[p.key])?flat[p.key]:null),
+   warnings:result.warnings||[],error:result.error||null});
+  $("groupProgress").value=run.evaluated;
+  $("groupStatus").textContent=`${cfg.mode==="exact"?"전수":"근사 빔"} · 추정 ${run.evaluated}/${$("groupProgress").max} · 최종 k명 조합 ${run.finalEvaluated} · 달성 ${run.satisfied} · 실패/부적절/목표결측 ${run.invalid} · 경과 ${((performance.now()-started)/1000).toFixed(1)}초`;
+  await new Promise(r=>setTimeout(r,0));return item;
+ }
+ try{
+  if(cfg.need===0){await evaluate(cfg.fixed.slice(),0);run.exhaustive=true;}
+  else if(cfg.mode==="exact"){
+   for(const extra of combinations(cfg.pool,cfg.need)){
+    if(state.stop)break;
+    await evaluate([...cfg.fixed,...extra].sort((a,b)=>a-b),cfg.need);
+   }
+   run.exhaustive=BigInt(run.finalEvaluated)===BigInt(cfg.count);
+  }else{
+   let frontier=[{excluded:cfg.fixed.slice()}];const rng=seeded(cfg.seed);
+   for(let depth=1;depth<=cfg.need;depth++){
+    if(state.stop||!frontier.length)break;
+    const quota=Math.max(1,Math.floor((cfg.budget-run.evaluated)/(cfg.need-depth+1)));
+    // Random cyclic order for each parent; round-robin expansion shares limited budgets.
+    // Deduplicate only this layer; a subset cannot occur in different depths.
+    const cursors=frontier.map(parent=>{
+     const options=cfg.pool.filter(r=>!parent.excluded.includes(r));
+     for(let i=options.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
+     return{parent,options,pos:0};
+    });
+    const seen=new Set(),next=[];let used=0,progress=true;
+    while(used<quota&&progress&&!state.stop){
+     progress=false;
+     for(const cur of cursors){
+      if(used>=quota||state.stop)break;
+      let candidate=null;
+      while(cur.pos<cur.options.length){
+       const ex=[...cur.parent.excluded,cur.options[cur.pos++]].sort((a,b)=>a-b),key=ex.join(",");
+       if(!seen.has(key)){seen.add(key);candidate=ex;break;}
+      }
+      if(!candidate)continue;progress=true;
+      const item=await evaluate(candidate,depth);used++;
+      if(item.result.ok&&item.result.valid&&item.goal.finite)keep(next,item,cfg.beam);
+     }
+    }
+    if(cursors.some(c=>c.pos<c.options.length))run.sampling=true;
+    frontier=next;
+   }
+   // Even a requested beam search can accidentally cover every final combination.
+   run.exhaustive=BigInt(run.finalEvaluated)===BigInt(cfg.count);
+  }
+  run.termination=state.stop?"사용자 중지":run.exhaustive?"전체 후보 조합 평가 완료":run.finalEvaluated?"근사 탐색 완료":"최종 조합 미도달";
+ }catch(e){run.termination="실행 오류: "+(e.message||e);throw e;}
+ finally{
+  run.finishedAt=stamp();run.elapsedSeconds=(performance.now()-started)/1000;state.runningGroup=false;$("stopGroup").disabled=true;
+  renderGroup();renderGroupHistory();
+ }
+}
+function renderGroup(){
+ const run=state.group;if(!run)return;const cfg=run.config;
+ $("groupStatus").textContent=`${run.termination||"진행 중"} · 추정 ${run.evaluated}회 / 최종 ${cfg.k}명 제외 조합 ${run.finalEvaluated}개 / 목표 전체 달성 ${run.satisfied}개 / 실패·부적절·목표결측 ${run.invalid}회\n가능한 최종 조합 ${cfg.count}개 · ${run.exhaustive?"지정 후보 범위 전수 평가됨":"전역 최적/목표 발견 보장 없음"} · 상위 ${run.top.length}개 보관. ${run.satisfied?"":"목표 달성 조합은 평가한 범위에서 발견하지 못했습니다."}\n표와 내보내기는 실행 당시 목표·우선순위 기준입니다. 입력을 변경했다면 새로 실행하세요.`;
+ const base=flatten(run.context.baseline);
+ $("groupTable").innerHTML="<table><thead><tr><th>순위 / 작업</th><th>제외 원본 행</th><th>잔여 N</th><th>달성</th><th>경고</th>"+cfg.goals.map(g=>`<th>${esc(g.slot+". "+g.label)}<br>${esc(targetText(g))}<br>값 / Δ원자료 / 미달량</th>`).join("")+"</tr></thead><tbody>"+
+ run.top.map((x,i)=>`<tr><td>${i+1} <button class="secondary" data-groupdetail="${i}">상세</button> <button data-groupapply="${i}">비교 적용</button></td><td>${esc(x.excluded.join(", "))}</td><td>${x.result.n}</td><td>${x.goal.met}/${cfg.goals.length}${x.goal.complete?" 달성":" 미달"}</td><td title="${esc(x.result.warnings.join("\n"))}">${x.result.warnings.length}</td>`+cfg.goals.map((g,j)=>`<td class="${x.goal.gaps[j]===0?"ok":"bad"}">${fmt(x.flat[g.key])}<br>${finite(base[g.key])?fmt(x.flat[g.key]-base[g.key]):"—"}<br>${fmt(x.goal.gaps[j])}</td>`).join("")+"</tr>").join("")+"</tbody></table>";
+ document.querySelectorAll("[data-groupdetail]").forEach(b=>b.onclick=()=>showGroupDetail(Number(b.dataset.groupdetail)));
+ document.querySelectorAll("[data-groupapply]").forEach(b=>b.onclick=()=>{if(state.busy)return;applyGroup(Number(b.dataset.groupapply));});
+}
+function showGroupDetail(index){
+ const run=state.group,item=run.top[index],base=flatten(run.context.baseline);
+ $("groupDetail").innerHTML=`<h3>후보 ${index+1} · 제외 ${esc(item.excluded.map(caseLabel).join(", "))}</h3><p class="note">목표 달성 ${item.goal.met}/${run.config.goals.length} · 추정 경고 ${item.result.warnings.length}개</p><div class="scroll">${table(["수치","원자료","후보","Δ"],Object.entries(item.flat).map(([k,v])=>{
+ const parts=k.split(":");const name=k.startsWith("fit:")?(fitLabels[k.slice(4)]||k):`${run.context.labels[parts[1]]||parts[1]} | ${parts[2]}`;
+ return[name,fmt(base[k]),fmt(v),finite(v)&&finite(base[k])?fmt(v-base[k]):"—"];
+ }))}</div>${item.result.warnings.length?`<div class="notice warning">${item.result.warnings.map(esc).join("<br>")}</div>`:""}`;
+}
+function applyGroup(index){
+ requireBase();const run=state.group,item=run?.top[index];if(!item)throw Error("후보가 없습니다.");
+ const reason=`[목표 기반 탐색적 후보; 삭제 정당화 아님] ${run.config.reason}`;
+ $("excludeRows").value=item.excluded.join(", ");$("reason").value=reason;
+ state.scenario={excluded:[...item.excluded],effective:[...item.excluded],reason,result:structuredClone(item.result),at:stamp(),searchId:run.id};
+ state.history.push({type:"scenario",at:stamp(),excluded:[...item.excluded],effective:[...item.excluded],reason,ok:true,result:structuredClone(item.result),searchId:run.id});
+ renderResults();renderHistory();renderRank();showGroupDetail(index);
+ message("후보 결과를 03 원자료 비교에 적용했습니다. 원자료 파일은 수정·삭제하지 않습니다.");
+ $("baselineInfo").scrollIntoView({behavior:"smooth",block:"center"});
+}
+function exportGroup(){
+ if(!state.group&&!state.groupArchive.length)throw Error("탐색 기록이 없습니다.");
+ download("path_group_search.json",JSON.stringify({application:"PATH",version:"2.2",exportedAt:stamp(),
+ warning:"Exploratory outcome-informed selection. No selection-adjusted inference. Archived runs may use different models/data.",
+ current:state.group,archive:state.groupArchive},null,2),"application/json;charset=utf-8");
+}
+function exportGroupCSV(){
+ const run=state.group;if(!run)throw Error("현재 탐색 결과가 없습니다.");
+ const keys=Object.keys(flatten(run.context.baseline)),base=flatten(run.context.baseline);
+ download("path_group_candidates.csv",csv(["rank","excluded_rows","n","targets_met","all_targets_met","warnings","search_id","mode","exhaustive","reason",
+ ...run.config.goals.flatMap(g=>[`goal_${g.slot}_${g.label}_${targetText(g)}`,`goal_${g.slot}_gap`]),...keys.flatMap(k=>[k,"baseline:"+k,"delta:"+k])],
+ run.top.map((x,i)=>[i+1,x.excluded.join(";"),x.result.n,x.goal.met,x.goal.complete,x.result.warnings.join(" | "),run.id,run.config.mode,run.exhaustive,run.config.reason,
+ ...run.config.goals.flatMap((g,j)=>[x.flat[g.key],x.goal.gaps[j]]),...keys.flatMap(k=>[x.flat[k],base[k],finite(x.flat[k])&&finite(base[k])?x.flat[k]-base[k]:null])])),"text/csv;charset=utf-8");
+}
+bind("importGoals",()=>{
+ requireBase();const ps=priorities();if(!ps.length)throw Error("04에서 지표를 먼저 선택하세요.");
+ renderGoals(ps.map(p=>({key:p.key,op:p.dir==="min"?"le":p.dir==="target"?"near":"ge",value:p.dir==="target"?p.target:"",epsilon:0})));
+ message("지표를 가져왔습니다. 목표값을 직접 입력하세요. 절댓값 방향은 부호 있는 ≥ 조건으로 가져오므로 조건도 확인하세요.");
+});
+bind("groupEstimate",()=>{
+ const c=groupConfig();$("groupStatus").textContent=`분석 가능 N=${state.prepared.usable.length} · 총 제외 ${c.k}명 (고정 ${c.fixed.length} + 추가 ${c.need}) · 잔여 N=${state.prepared.usable.length-c.k}\n추가 후보 ${c.pool.length}명 · 가능한 최종 조합 ${c.count}개 · 실행 방식 ${c.mode==="exact"?"전수":"근사 빔"} · 최대 추정 ${c.budget}회\n원자료 목표 달성 ${goalStats(flatten(state.baseline),c.goals).met}/${c.goals.length}. 이미 달성된 목표를 위해 제외할 필요는 없습니다.`;
+});
+bind("runGroup",()=>task(runGroup));
+$("stopGroup").onclick=()=>{state.stop=true;$("stopGroup").disabled=true;$("groupStatus").textContent+="\n현재 추정 후 중지 요청됨";};
+bind("exportGroup",exportGroup);bind("exportGroupCSV",exportGroupCSV);
+window.addEventListener("beforeunload",e=>{if(state.busy||state.baseline){e.preventDefault();e.returnValue="";}});
+
+bind("exportEngineLog",()=>download("path_sem_engine_log.txt",engineDiagnostics.join("\n")));
+bind("init",()=>task(initEngine));bind("baseline",()=>task(runBaseline));bind("runLOO",()=>task(runLOO));bind("compare",()=>task(compare));
+$("stopLOO").onclick=()=>{state.stop=true;$("stopLOO").disabled=true;$("progressText").textContent+=" · 현재 사례 추정 완료 후 중지합니다.";};
+bind("forms",()=>{readRoles();state.removed.clear();invalidate();renderForms();readRoles();buildModel();});
+$("file").addEventListener("change",async e=>{if(state.busy)return;const f=e.target.files[0];if(!f)return;await task(async()=>{const bytes=await f.arrayBuffer();const text=new TextDecoder($("encoding").value,{fatal:true}).decode(bytes);loadData(text,f.name,$("delimiter").value);if(globalThis.crypto?.subtle)try{state.sourceHash=[...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(x=>x.toString(16).padStart(2,"0")).join("");}catch{}});});
+function demoData(){
+ let seed=42821;
+ function u(){seed=(Math.imul(1664525,seed)+1013904223)>>>0;return(seed+.5)/4294967296;}
+ function z(){return Math.sqrt(-2*Math.log(u()))*Math.cos(2*Math.PI*u());}
+ const headers=["ID",...["학습동기","학습몰입","학습전략","학업성취"].flatMap(s=>[1,2,3].map(j=>s+"_"+j))],rows=[];
+ for(let i=1;i<=300;i++){
+  const x=z(),m1=.55*x+.835*z(),m2=.25*x+.4*m1+.8*z(),y=.2*x+.35*m1+.3*m2+.75*z();
+  const obs=[x,m1,m2,y].flatMap(f=>[.85,.8,.75].map(l=>l*f+Math.sqrt(1-l*l)*z()));
+  rows.push([`S${String(i).padStart(3,"0")}`,...obs.map(v=>v.toFixed(8))]);
+ }
+ return{headers,rows};
+}
+bind("demo",()=>{
+ const d=demoData();
+ loadData(csv(d.headers,d.rows,false),"sem_example_300.csv",",");
+ $("nx").value=1;$("nm").value=2;$("ny").value=1;
+ state.roles={x:[{name:"학습동기",indicators:[1,2,3]}],
+ m:[{name:"학습몰입",indicators:[4,5,6]},{name:"학습전략",indicators:[7,8,9]}],
+ y:[{name:"학업성취",indicators:[10,11,12]}]};
+ $("idColumn").value="0";renderForms();buildModel();
+ message("잠재변인 4개 · 관측지표 각 3개 · 300사례 연속형 SEM 예제를 불러왔습니다. 원자료 기본분석을 실행하세요.");
+});
+bind("exportDemo",()=>{const d=demoData();download("sem_example_300.csv",csv(d.headers,d.rows),"text/csv;charset=utf-8");});
+$("edgeType").onchange=()=>edgeOptions();$("edgeFrom").onchange=edgeToOptions;
+bind("removeEdge",()=>{const k=$("edgeTo").value;if(!k)throw Error("제외할 수 있는 연결이 없습니다.");state.removed.add(k);invalidate();buildModel();});
+bind("restoreEdges",()=>{state.removed.clear();invalidate();buildModel();});
+for(const r of ["x","m","y"])$("n"+r).onchange=()=>{try{readRoles();state.removed.clear();invalidate();renderForms();readRoles();buildModel();}catch(e){message(e.message,true);}};
+$("missing").onchange=invalidate;$("idColumn").onchange=()=>renderRank();
+bind("rerank",()=>{requireBase();sortRows();message("현재 우선순위로 정렬했습니다. R 재추정은 하지 않습니다.");});
+bind("prev",()=>{state.page--;renderRank();});bind("next",()=>{state.page++;renderRank();});
+$("pageSize").onchange=()=>{state.page=0;renderRank();};$("rankFilter").oninput=()=>{state.page=0;renderRank();};
+$("excludeRows").oninput=renderRank;
+bind("clearSelection",()=>{$("excludeRows").value="";renderRank();message("제외 후보 입력만 비웠습니다. 기존 비교 결과는 새 비교를 실행할 때까지 유지됩니다.");});
+bind("exportR",exportR);bind("exportData",()=>{requireModel();const p=state.prepared||prepare();download("path_analysis_data.csv",p.data,"text/csv;charset=utf-8");});
+bind("exportRank",exportRank);bind("exportReport",exportReport);bind("exportComparison",exportComparison);
+renderForms();renderPriorities();renderRank();renderGoals();renderGroupHistory();
+// Start immediately, without blocking model/data editing.
+initEngine().catch(e=>{message("R 자동 연결에 실패했습니다. 00의 오류를 확인하고 재시도하세요: "+(e.message||String(e)),true);console.error(e);});
+// Developer test hooks expose helpers and in-memory state for local verification.
+// No mock engine is installed by the application and no data is sent externally.
+globalThis.PATH_TEST={bootR,preparePackageIndex,ensureBootPackage,engineDiagnostics,initEngine,demoData,exportR,exportReport,splitCSV,detectSep,loadData,prepare,buildModel,flatten,score,sortRows,parseExclusions,state,renderForms,readRoles,priorities,R_BACKEND,chooseBig,goalGap,goalStats,compareGroups,combinations,seeded,groupConfig,readGoals,renderGoals,runGroup,applyGroup,renderGroup,resetGroup};
+</script>
+</body>
+</html>

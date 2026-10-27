@@ -1,0 +1,9 @@
+{
+  "javascriptSyntax": "passed",
+  "mockLoaderChecks": 10,
+  "pythonPackagingSyntax": "passed",
+  "workflowYamlParse": "passed",
+  "actualWasmBuild": "not_run",
+  "actualBrowserRExecution": "not_run",
+  "dothomeDeployment": "not_run"
+}
