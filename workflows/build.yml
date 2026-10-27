@@ -1,0 +1,50 @@
+name: Build and test SEM Wasm bundle
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with matching webR toolchain
+        run: |
+          docker pull ghcr.io/r-wasm/webr:0.5.4
+          docker run --rm -v "$PWD:/work" -w /work \
+            ghcr.io/r-wasm/webr:0.5.4 Rscript scripts/build.R
+      - name: Verify binary format and assemble deployment
+        run: |
+          sudo chown -R "$USER:$USER" build
+          python3 scripts/package.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test tools
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Real browser startup and example SEM test
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory dist >http_server.txt 2>&1 &
+          node scripts/verify.mjs
+      - name: Attach successful deployment files
+        uses: actions/upload-artifact@v4
+        with:
+          name: lavaan_dothome_ready
+          path: dist/
+          if-no-files-found: error
+      - name: Attach diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_and_browser_diagnostics
+          path: |
+            browser_check.json
+            browser_console.txt
+            engine_log.txt
+            http_server.txt
+          if-no-files-found: ignore
